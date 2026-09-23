@@ -4,9 +4,8 @@ Workflow: [.github/workflows/deploy.yaml](../.github/workflows/deploy.yaml)
 
 ## Flow
 
-1. **SealHub Image Build** pushes `ghcr.io/raghavendiran-2002/sealhub/hubd:0.1.<run>` and `:0.1-latest`.
-2. **SealHub Deploy Pi** runs on `workflow_run` success (main only).
-3. Runner joins **Tailscale** as an ephemeral node tagged **`tag:ci`**, then **`ssh pi@live`** (Tailscale SSH — no GitHub SSH key).
+1. **SealHub Deploy Pi** is **manual** (`workflow_dispatch`) while testing. Build auto-trigger and deploy `workflow_run` are commented out in the workflow files.
+2. Runner joins **Tailscale** via **Workload Identity** (GitHub OIDC), tagged **`tag:ci`**, then **`ssh pi@live`**.
 
 ## GitHub environment `tailscale`
 
@@ -14,26 +13,33 @@ Workflow: [.github/workflows/deploy.yaml](../.github/workflows/deploy.yaml)
 
 | Secret | Purpose |
 |--------|---------|
-| `TS_NODE_AUTHKEY` | Tailscale **auth key** for CI (see below) |
+| `TS_OAUTH_CLIENT_ID` | Federated identity / OAuth client ID from Tailscale |
+| `TS_AUDIENCE` | **Audience** from Trust credentials (e.g. `api.tailscale.com/…`) |
 | `GHCR_READ_TOKEN` | (Optional) PAT with `read:packages` if GHCR images are private |
 
-### Create `TS_NODE_AUTHKEY`
+**Not used:** `TS_NODE_AUTHKEY`, `SSH_PRIVATE_KEY`.
 
-In [Tailscale admin → Settings → Keys](https://login.tailscale.com/admin/settings/keys):
+### Tailscale Trust credentials (one-time, static Subject)
 
-- **Reusable** + **Ephemeral**
-- **Tags:** `tag:ci` (must exist in `tagOwners`)
-- **Pre-approved** if your tailnet uses device approval
+**Admin → Settings → Trust credentials** — GitHub issuer `https://token.actions.githubusercontent.com`.
 
-Paste the key into environment secret **`TS_NODE_AUTHKEY`**.
+**Subject** (exact; stable across runs — copy from Tailscale after first failed run if needed):
 
-**Not used:** `SSH_PRIVATE_KEY` — authentication is Tailscale SSH + ACLs.
+```text
+repo:Raghavendiran-2002@70228368/sealhub@1382946894:environment:tailscale
+```
 
-### Troubleshooting: JWT exchange 403 (Workload Identity)
+**Audience** — copy into GitHub secret **`TS_AUDIENCE`**.
 
-If you previously used **`TS_OAUTH_CLIENT_ID`** + **`TS_AUDIENCE`**, a `403` on JWT exchange means GitHub is not trusted yet in **Admin → Settings → Trust credentials** (link GitHub Actions OIDC to your federated client and matching audience). This workflow uses an **auth key** instead so deploy works without that setup.
+Deploy job must use `environment: tailscale` so the OIDC `sub` matches the Trust credential Subject.
 
-Optional: `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE` can remain in the environment for other tooling; deploy ignores them.
+### Troubleshooting
+
+| Error | Fix |
+|-------|-----|
+| OAuth identity empty | Add `TS_OAUTH_CLIENT_ID` + `TS_AUDIENCE` on environment `tailscale` |
+| JWT exchange 403 / Cannot validate subject | Subject in Trust credentials must match GitHub `sub` exactly (with `@` repo/org IDs) |
+| invalid key / unable to validate API key | Remove auth key from workflow; do not put Audience in `TS_NODE_AUTHKEY` |
 
 ## One-time: Tailscale on the Pi
 

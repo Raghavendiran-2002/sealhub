@@ -1,11 +1,12 @@
 name: SealHub Image Build
 
+# Push trigger disabled while testing deploy-only; re-enable push when CI is stable.
 on:
-  push:
-    branches:
-      - main
-      - master
   workflow_dispatch:
+  # push:
+  #   branches:
+  #     - main
+  #     - master
 
 permissions:
   contents: read

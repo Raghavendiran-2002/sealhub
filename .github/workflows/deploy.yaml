@@ -1,12 +1,12 @@
 name: SealHub Deploy Pi
 
-# Runs after a successful image build on main; deploys latest hubd to Pi via Tailscale SSH (no SSH keys).
+# Manual deploy while testing. Re-enable workflow_run after build pipeline is stable.
 
 on:
-  workflow_run:
-    workflows: ["SealHub Image Build"]
-    types: [completed]
-    branches: [main, master]
+  # workflow_run:
+  #   workflows: ["SealHub Image Build"]
+  #   types: [completed]
+  #   branches: [main, master]
   workflow_dispatch:
     inputs:
       image_tag:
@@ -17,6 +17,7 @@ on:
 permissions:
   contents: read
   packages: read
+  id-token: write # GitHub OIDC → Tailscale Workload Identity
 
 concurrency:
   group: sealhub-deploy-pi
@@ -25,7 +26,6 @@ concurrency:
 env:
   REGISTRY_IMAGE: ghcr.io/raghavendiran-2002/sealhub/hubd
   PI_SSH: pi@live
-  # Fallback if MagicDNS short name is not enabled
   PI_TAILSCALE_IP: 100.72.63.104
   TS_CI_TAG: tag:ci
 
@@ -34,23 +34,13 @@ jobs:
     name: Deploy hubd to Pi (live)
     runs-on: ubuntu-latest
     environment: tailscale
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       (github.event.workflow_run.head_branch == 'main' ||
-        github.event.workflow_run.head_branch == 'master'))
 
     steps:
       - name: Resolve image tag
         id: tag
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ github.event.inputs.image_tag }}"
-          else
-            # Same build just pushed :0.1-latest — always deploy newest hubd.
-            TAG="0.1-latest"
-          fi
+          TAG="${{ github.event.inputs.image_tag }}"
           if [ -z "$TAG" ]; then TAG="0.1-latest"; fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "image=${{ env.REGISTRY_IMAGE }}:${TAG}" >> "$GITHUB_OUTPUT"
@@ -58,21 +48,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate Tailscale auth key
+      - name: Validate Tailscale Workload Identity secrets
         shell: bash
         env:
-          TS_AUTHKEY: ${{ secrets.TS_NODE_AUTHKEY }}
+          TS_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          TS_AUD: ${{ secrets.TS_AUDIENCE }}
         run: |
           set -euo pipefail
-          if [[ -z "$TS_AUTHKEY" ]]; then
-            echo "::error::Missing TS_NODE_AUTHKEY on environment tailscale. Create a reusable+ephemeral auth key tagged tag:ci in Tailscale admin."
+          if [[ -z "$TS_ID" || -z "$TS_AUD" ]]; then
+            echo "::error::Set TS_OAUTH_CLIENT_ID and TS_AUDIENCE on environment tailscale (Trust credentials Audience + federated client ID)."
             exit 1
           fi
 
       - name: Connect Tailscale
         uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TS_NODE_AUTHKEY }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
           tags: ${{ env.TS_CI_TAG }}
           ping: live,${{ env.PI_TAILSCALE_IP }}
 
