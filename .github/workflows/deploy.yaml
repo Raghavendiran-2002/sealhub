@@ -1,6 +1,8 @@
 name: SealHub Deploy Pi
 
-# Manual deploy while testing. Re-enable workflow_run after build pipeline is stable.
+# Tailscale WIF: environment tailscale → Trust credential Subject must include environment:tailscale
+# See docs/TAILSCALE-OIDC-CI.md (Subject example:
+#   repo:Raghavendiran-2002@70228368/sealhub@1382946894:environment:tailscale)
 
 on:
   # workflow_run:
@@ -17,7 +19,7 @@ on:
 permissions:
   contents: read
   packages: read
-  id-token: write # GitHub OIDC → Tailscale Workload Identity
+  id-token: write
 
 concurrency:
   group: sealhub-deploy-pi
@@ -27,7 +29,6 @@ env:
   REGISTRY_IMAGE: ghcr.io/raghavendiran-2002/sealhub/hubd
   PI_SSH: pi@live
   PI_TAILSCALE_IP: 100.72.63.104
-  TS_CI_TAG: tag:ci
 
 jobs:
   deploy:
@@ -48,7 +49,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate Tailscale Workload Identity secrets
+      - name: Validate Tailscale WIF secrets
         shell: bash
         env:
           TS_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
@@ -56,7 +57,15 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "$TS_ID" || -z "$TS_AUD" ]]; then
-            echo "::error::Set TS_OAUTH_CLIENT_ID and TS_AUDIENCE on environment tailscale (Trust credentials Audience + federated client ID)."
+            echo "::error::Missing TS_OAUTH_CLIENT_ID or TS_AUDIENCE on environment tailscale."
+            exit 1
+          fi
+          if [[ "$TS_AUD" != api.tailscale.com/* ]]; then
+            echo "::error::TS_AUDIENCE must be the Trust credential Audience (api.tailscale.com/…), not an auth key or OAuth client secret."
+            exit 1
+          fi
+          if [[ "$TS_ID" == api.tailscale.com/* ]]; then
+            echo "::error::TS_OAUTH_CLIENT_ID must be the Trust credential Client ID, not the Audience."
             exit 1
           fi
 
@@ -65,21 +74,23 @@ jobs:
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           audience: ${{ secrets.TS_AUDIENCE }}
-          tags: ${{ env.TS_CI_TAG }}
-          ping: live,${{ env.PI_TAILSCALE_IP }}
+          tags: tag:ci
 
       - name: Resolve Pi SSH target
         id: pi
         shell: bash
         run: |
           set -euo pipefail
-          for target in "${{ env.PI_SSH }}" "pi@${{ env.PI_TAILSCALE_IP }}"; do
-            if ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new "$target" true 2>/dev/null; then
-              echo "target=$target" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
+          for _ in $(seq 1 15); do
+            for target in "${{ env.PI_SSH }}" "pi@${{ env.PI_TAILSCALE_IP }}"; do
+              if ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new "$target" true 2>/dev/null; then
+                echo "target=$target" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            done
+            sleep 4
           done
-          echo "Tailscale SSH to Pi failed — enable 'tailscale set --ssh' on live and ACL accept for tag:ci → pi" >&2
+          echo "Tailscale SSH to Pi failed — ACL ssh accept tag:ci→tag:homelab user pi; tailscale set --ssh on live" >&2
           exit 1
 
       - name: Install deploy script on Pi

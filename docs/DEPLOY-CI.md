@@ -9,37 +9,23 @@ Workflow: [.github/workflows/deploy.yaml](../.github/workflows/deploy.yaml)
 
 ## GitHub environment `tailscale`
 
-**Settings → Environments → tailscale → Environment secrets:**
+Full WIF checklist: **[TAILSCALE-OIDC-CI.md](TAILSCALE-OIDC-CI.md)** (mirrors homelab `tailscale-oidc-ci.md`).
 
-| Secret | Purpose |
-|--------|---------|
-| `TS_OAUTH_CLIENT_ID` | Federated identity / OAuth client ID from Tailscale |
-| `TS_AUDIENCE` | **Audience** from Trust credentials (e.g. `api.tailscale.com/…`) |
-| `GHCR_READ_TOKEN` | (Optional) PAT with `read:packages` if GHCR images are private |
+| Secret | Source |
+|--------|--------|
+| `TS_OAUTH_CLIENT_ID` | **Trust credential** Client ID (SealHub credential, not homelab) |
+| `TS_AUDIENCE` | **Trust credential** Audience `api.tailscale.com/…` |
+| `GHCR_READ_TOKEN` | (Optional) GHCR pull on Pi |
 
-**Not used:** `TS_NODE_AUTHKEY`, `SSH_PRIVATE_KEY`.
-
-### Tailscale Trust credentials (one-time, static Subject)
-
-**Admin → Settings → Trust credentials** — GitHub issuer `https://token.actions.githubusercontent.com`.
-
-**Subject** (exact; stable across runs — copy from Tailscale after first failed run if needed):
+**Trust credential Subject (set once in Tailscale admin):**
 
 ```text
 repo:Raghavendiran-2002@70228368/sealhub@1382946894:environment:tailscale
 ```
 
-**Audience** — copy into GitHub secret **`TS_AUDIENCE`**.
+Credential tags: **`tag:ci` only**. Scope: **`auth_keys`**.
 
-Deploy job must use `environment: tailscale` so the OIDC `sub` matches the Trust credential Subject.
-
-### Troubleshooting
-
-| Error | Fix |
-|-------|-----|
-| OAuth identity empty | Add `TS_OAUTH_CLIENT_ID` + `TS_AUDIENCE` on environment `tailscale` |
-| JWT exchange 403 / Cannot validate subject | Subject in Trust credentials must match GitHub `sub` exactly (with `@` repo/org IDs) |
-| invalid key / unable to validate API key | Remove auth key from workflow; do not put Audience in `TS_NODE_AUTHKEY` |
+**Not used:** `TS_NODE_AUTHKEY` in deploy workflow, `SSH_PRIVATE_KEY` (Tailscale SSH).
 
 ## One-time: Tailscale on the Pi
 
