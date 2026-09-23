@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Remote deploy: pull new hubd GHCR image, rebuild git+ssh wrapper, restart container.
+# Remote deploy: pull hubd from GHCR and restart container (no image build on Pi).
 # Preserves /etc/sealhub and /var/lib/sealhub/repo. Run as user pi.
 set -euo pipefail
 
@@ -14,40 +14,45 @@ if [[ ! -f "$CONFIG_DIR/config.yaml" ]]; then
   exit 1
 fi
 
+ensure_mount_permissions() {
+  # Rootless Podman maps container UID 0 → host pi; secrets must be readable by pi.
+  if [[ -r "$CONFIG_DIR/config.yaml" ]]; then
+    sudo chown "$USER:$USER" "$CONFIG_DIR/config.yaml" 2>/dev/null || true
+    sudo chmod 644 "$CONFIG_DIR/config.yaml" 2>/dev/null || true
+  fi
+  for f in keyring jwt-secret; do
+    if [[ -f "$CONFIG_DIR/$f" ]]; then
+      sudo chown "$USER:$USER" "$CONFIG_DIR/$f" 2>/dev/null || true
+      sudo chmod 600 "$CONFIG_DIR/$f" 2>/dev/null || true
+    fi
+  done
+  sudo chown -R "$USER:$USER" "$REPO_DIR" 2>/dev/null || true
+}
+
 if [[ -n "${GHCR_TOKEN:-}" ]]; then
   echo "$GHCR_TOKEN" | podman login ghcr.io -u "${GHCR_USER:-raghavendiran-2002}" --password-stdin
 fi
 
+ensure_mount_permissions
+
 echo "Pulling $HUBD_IMAGE ..."
 podman pull "$HUBD_IMAGE"
 
-tmpdir=$(mktemp -d)
-trap 'rm -rf "$tmpdir"' EXIT
-cat >"$tmpdir/Containerfile" <<EOF
-FROM ${HUBD_IMAGE} AS hubd
-FROM docker.io/library/debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends git openssh-client ca-certificates curl \\
-  && rm -rf /var/lib/apt/lists/*
-COPY --from=hubd /hubd /hubd
-EXPOSE 8080
-ENTRYPOINT ["/hubd"]
-CMD ["/config/config.yaml"]
-EOF
-podman build -t sealhub-hubd:pi "$tmpdir"
-
 podman rm -f sealhub-hubd 2>/dev/null || true
 
+# UID 0 in container → pi on host (rootless); reads pi-owned keyring/config mounts.
 podman run -d --name sealhub-hubd \
   --replace \
+  --user 0:0 \
   -p 8080:8080 \
-  -v "$CONFIG_DIR/config.yaml:/config/config.yaml:ro" \
-  -v "$CONFIG_DIR/keyring:/run/secrets/keyring:ro" \
-  -v "$CONFIG_DIR/jwt-secret:/run/secrets/jwt-secret:ro" \
-  -v "$REPO_DIR:/var/lib/sealhub/repo" \
-  -v "$HOME/.ssh:/root/.ssh:ro" \
+  -v "$CONFIG_DIR/config.yaml:/config/config.yaml:ro,z" \
+  -v "$CONFIG_DIR/keyring:/run/secrets/keyring:ro,z" \
+  -v "$CONFIG_DIR/jwt-secret:/run/secrets/jwt-secret:ro,z" \
+  -v "$REPO_DIR:/var/lib/sealhub/repo:Z" \
+  -v "$HOME/.ssh:/root/.ssh:ro,z" \
   -e HOME=/root \
   -e GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
-  sealhub-hubd:pi
+  "$HUBD_IMAGE"
 
 for _ in $(seq 1 30); do
   if curl -sf http://127.0.0.1:8080/readyz >/dev/null 2>&1; then

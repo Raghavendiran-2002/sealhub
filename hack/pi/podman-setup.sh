@@ -3,7 +3,7 @@
 # Pulls ghcr.io/.../hubd:0.1.4, wraps with git+ssh, clones sealhub-data, starts hubd.
 set -euo pipefail
 
-HUBD_IMAGE="${HUBD_IMAGE:-ghcr.io/raghavendiran-2002/sealhub/hubd:0.1.4}"
+HUBD_IMAGE="${HUBD_IMAGE:-ghcr.io/raghavendiran-2002/sealhub/hubd:0.1-latest}"
 PI_IP="${PI_IP:-192.168.1.12}"
 CONFIG_DIR="/etc/sealhub"
 REPO_DIR="/var/lib/sealhub/repo"
@@ -78,6 +78,7 @@ freshness:
   pollInterval: "30s"
 EOF
 sudo_cmd chmod 644 "$CONFIG_DIR/config.yaml"
+sudo_cmd chown "$USER:$USER" "$CONFIG_DIR/config.yaml"
 
 if [[ -d "$REPO_DIR/.git" ]]; then
   : ok
@@ -93,36 +94,20 @@ fi
 echo "Pulling $HUBD_IMAGE ..."
 podman pull "$HUBD_IMAGE"
 
-tmpdir=$(mktemp -d)
-trap 'rm -rf "$tmpdir"' EXIT
-cat >"$tmpdir/Containerfile" <<EOF
-FROM ${HUBD_IMAGE} AS hubd
-FROM docker.io/library/debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends git openssh-client ca-certificates \\
-  && rm -rf /var/lib/apt/lists/*
-COPY --from=hubd /hubd /hubd
-EXPOSE 8080
-ENTRYPOINT ["/hubd"]
-CMD ["/config/config.yaml"]
-EOF
-podman build -t sealhub-hubd:pi "$tmpdir"
-
 podman rm -f sealhub-hubd 2>/dev/null || true
 
-# Rootless Podman: do NOT use --user uid:gid — that maps to a subuid on the host
-# which cannot read pi-owned files (keyring) even after chown pi:pi.
-# UID 0 inside the container maps to the host pi user and can read mounts + git ssh.
 podman run -d --name sealhub-hubd \
   --replace \
+  --user 0:0 \
   -p 8080:8080 \
-  -v "$CONFIG_DIR/config.yaml:/config/config.yaml:ro" \
-  -v "$CONFIG_DIR/keyring:/run/secrets/keyring:ro" \
-  -v "$CONFIG_DIR/jwt-secret:/run/secrets/jwt-secret:ro" \
-  -v "$REPO_DIR:/var/lib/sealhub/repo" \
-  -v "$HOME/.ssh:/root/.ssh:ro" \
+  -v "$CONFIG_DIR/config.yaml:/config/config.yaml:ro,z" \
+  -v "$CONFIG_DIR/keyring:/run/secrets/keyring:ro,z" \
+  -v "$CONFIG_DIR/jwt-secret:/run/secrets/jwt-secret:ro,z" \
+  -v "$REPO_DIR:/var/lib/sealhub/repo:Z" \
+  -v "$HOME/.ssh:/root/.ssh:ro,z" \
   -e HOME=/root \
   -e GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" \
-  sealhub-hubd:pi
+  "$HUBD_IMAGE"
 
 echo "Waiting for hubd..."
 ready=0
