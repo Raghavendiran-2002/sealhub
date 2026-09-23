@@ -33,5 +33,5 @@ jobs:
           files: ./docker-argo-bake.hcl
           push: true
           set: |
-            *.variables.GITHUB_RUN_NUMBER=${{ github.run_number }}
-            *.variables.IMAGE_PREFIX=ghcr.io/raghavendiran-2002/sealhub
+            hubd.tags=ghcr.io/raghavendiran-2002/sealhub/hubd:0.1.${{ github.run_number }}
+            operator.tags=ghcr.io/raghavendiran-2002/sealhub/operator:0.1.${{ github.run_number }}
