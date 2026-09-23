@@ -1,0 +1,105 @@
+name: SealHub Deploy Pi
+
+# Runs after a successful image build on main; deploys latest hubd to Pi via Tailscale SSH (no SSH keys).
+
+on:
+  workflow_run:
+    workflows: ["SealHub Image Build"]
+    types: [completed]
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "hubd tag suffix (e.g. 0.1-latest or 0.1.42). Default 0.1-latest"
+        required: false
+        default: "0.1-latest"
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: sealhub-deploy-pi
+  cancel-in-progress: true
+
+env:
+  REGISTRY_IMAGE: ghcr.io/raghavendiran-2002/sealhub/hubd
+  PI_SSH: pi@live
+  # Fallback if MagicDNS short name is not enabled
+  PI_TAILSCALE_IP: 100.72.63.104
+  TS_CI_TAG: tag:ci
+
+jobs:
+  deploy:
+    name: Deploy hubd to Pi (live)
+    runs-on: ubuntu-latest
+    environment: tailscale
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       (github.event.workflow_run.head_branch == 'main' ||
+        github.event.workflow_run.head_branch == 'master'))
+
+    steps:
+      - name: Resolve image tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.image_tag }}"
+          else
+            # Same build just pushed :0.1-latest — always deploy newest hubd.
+            TAG="0.1-latest"
+          fi
+          if [ -z "$TAG" ]; then TAG="0.1-latest"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "image=${{ env.REGISTRY_IMAGE }}:${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Connect Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: ${{ env.TS_CI_TAG }}
+          ping: live,${{ env.PI_TAILSCALE_IP }}
+
+      - name: Resolve Pi SSH target
+        id: pi
+        shell: bash
+        run: |
+          set -euo pipefail
+          for target in "${{ env.PI_SSH }}" "pi@${{ env.PI_TAILSCALE_IP }}"; do
+            if ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new "$target" true 2>/dev/null; then
+              echo "target=$target" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "Tailscale SSH to Pi failed — enable 'tailscale set --ssh' on live and ACL accept for tag:ci → pi" >&2
+          exit 1
+
+      - name: Install deploy script on Pi
+        run: |
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            "${{ steps.pi.outputs.target }}" \
+            'cat > /tmp/deploy-hubd-ci.sh && chmod +x /tmp/deploy-hubd-ci.sh' \
+            < hack/pi/deploy-hubd-ci.sh
+
+      - name: Deploy on Pi
+        env:
+          HUBD_IMAGE: ${{ steps.tag.outputs.image }}
+          GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            "${{ steps.pi.outputs.target }}" \
+            "HUBD_IMAGE='${HUBD_IMAGE}' GHCR_TOKEN='${GHCR_TOKEN:-}' GHCR_USER='raghavendiran-2002' \
+             /tmp/deploy-hubd-ci.sh"
+
+      - name: Smoke check
+        run: |
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            "${{ steps.pi.outputs.target }}" \
+            "curl -sf http://127.0.0.1:8080/healthz && echo && curl -sf http://127.0.0.1:8080/readyz && echo"

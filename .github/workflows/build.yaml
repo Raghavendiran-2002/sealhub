@@ -33,5 +33,5 @@ jobs:
           files: ./docker-argo-bake.hcl
           push: true
           set: |
-            hubd.tags=ghcr.io/raghavendiran-2002/sealhub/hubd:0.1.${{ github.run_number }}
-            operator.tags=ghcr.io/raghavendiran-2002/sealhub/operator:0.1.${{ github.run_number }}
+            hubd.tags=ghcr.io/raghavendiran-2002/sealhub/hubd:0.1.${{ github.run_number }},ghcr.io/raghavendiran-2002/sealhub/hubd:0.1-latest
+            operator.tags=ghcr.io/raghavendiran-2002/sealhub/operator:0.1.${{ github.run_number }},ghcr.io/raghavendiran-2002/sealhub/operator:0.1-latest
