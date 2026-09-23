@@ -25,7 +25,19 @@ repo:Raghavendiran-2002@70228368/sealhub@1382946894:environment:tailscale
 
 Credential tags: **`tag:ci` only**. Scope: **`auth_keys`**.
 
+**Optional:** `PI_SUDO_PASS` — only if `/etc/sealhub/config.yaml` is still `root:root` and passwordless sudo is unavailable.
+
 **Not used:** `TS_NODE_AUTHKEY` in deploy workflow, `SSH_PRIVATE_KEY` (Tailscale SSH).
+
+### Pi one-time permission fix
+
+Rootless Podman cannot read `root:root` `/etc/sealhub/config.yaml`. On the Pi:
+
+```bash
+sudo chown pi:pi /etc/sealhub/config.yaml && sudo chmod 644 /etc/sealhub/config.yaml
+```
+
+Deploy copies config into `~/.local/share/sealhub/run/` (pi-owned) before `podman run`.
 
 ## One-time: Tailscale on the Pi
 

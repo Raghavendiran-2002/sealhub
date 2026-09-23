@@ -91,18 +91,23 @@ if [[ ! -d "$REPO_DIR/.git" ]]; then
   git clone --branch main --single-branch "$DATA_REPO" "$REPO_DIR"
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=sync-run-config.sh
+source "$SCRIPT_DIR/sync-run-config.sh"
+
 echo "Pulling $HUBD_IMAGE ..."
 podman pull "$HUBD_IMAGE"
 
 podman rm -f sealhub-hubd 2>/dev/null || true
 
+RUN_DIR="${HOME}/.local/share/sealhub/run"
 podman run -d --name sealhub-hubd \
   --replace \
   --user 0:0 \
   -p 8080:8080 \
-  -v "$CONFIG_DIR/config.yaml:/config/config.yaml:ro,z" \
-  -v "$CONFIG_DIR/keyring:/run/secrets/keyring:ro,z" \
-  -v "$CONFIG_DIR/jwt-secret:/run/secrets/jwt-secret:ro,z" \
+  -v "$RUN_DIR/config.yaml:/config/config.yaml:ro,z" \
+  -v "$RUN_DIR/keyring:/run/secrets/keyring:ro,z" \
+  -v "$RUN_DIR/jwt-secret:/run/secrets/jwt-secret:ro,z" \
   -v "$REPO_DIR:/var/lib/sealhub/repo:Z" \
   -v "$HOME/.ssh:/root/.ssh:ro,z" \
   -e HOME=/root \
