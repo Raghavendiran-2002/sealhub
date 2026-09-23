@@ -104,12 +104,13 @@ jobs:
         env:
           HUBD_IMAGE: ${{ steps.tag.outputs.image }}
           GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          SUDO_PASS: ${{ secrets.PI_SUDO_PASS }}
         run: |
           set -euo pipefail
           ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
             "${{ steps.pi.outputs.target }}" \
             "HUBD_IMAGE='${HUBD_IMAGE}' GHCR_TOKEN='${GHCR_TOKEN:-}' GHCR_USER='raghavendiran-2002' \
-             /tmp/deploy-hubd-ci.sh"
+             SUDO_PASS='${SUDO_PASS:-}' /tmp/deploy-hubd-ci.sh"
 
       - name: Smoke check
         run: |
