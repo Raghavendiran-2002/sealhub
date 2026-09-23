@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sealhub-hubd
+  namespace: sealhub-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sealhub-hubd
+  template:
+    metadata:
+      labels:
+        app: sealhub-hubd
+    spec:
+      containers:
+        - name: hubd
+          image: ghcr.io/raghavendiran/sealhub/hubd:0.1.0
+          args: ["/config/config.yaml"]
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: github-pat
+              mountPath: /run/secrets/github-pat
+              subPath: token
+              readOnly: true
+            - name: keyring
+              mountPath: /run/secrets/keyring
+              subPath: keyring
+              readOnly: true
+            - name: jwt
+              mountPath: /run/secrets/jwt-secret
+              subPath: secret
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/sealhub/repo
+      volumes:
+        - name: config
+          secret:
+            secretName: sealhub-hubd-config
+        - name: github-pat
+          secret:
+            secretName: sealhub-github-pat
+        - name: keyring
+          secret:
+            secretName: sealhub-keyring
+        - name: jwt
+          secret:
+            secretName: sealhub-jwt
+        - name: data
+          emptyDir: {}

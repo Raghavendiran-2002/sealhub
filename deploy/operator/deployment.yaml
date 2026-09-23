@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sealhub-operator
+  namespace: sealhub-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sealhub-operator
+  template:
+    metadata:
+      labels:
+        app: sealhub-operator
+    spec:
+      serviceAccountName: sealhub-operator
+      containers:
+        - name: operator
+          image: ghcr.io/raghavendiran/sealhub/operator:0.1.0
+          args: ["--leader-elect=false"]

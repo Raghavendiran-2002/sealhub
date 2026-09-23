@@ -1,0 +1,21 @@
+name: SealHub Image Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+
+jobs:
+  image_build:
+    uses: vc-lsc/gha-workflow/.github/workflows/docker-buildx.yaml@v0.1
+    secrets: inherit
+    with:
+      docker-bake-path: ./docker-argo-bake.hcl
+      runner-name: paramount-cloud-ubuntu-arm64-latest
+      push-image: true

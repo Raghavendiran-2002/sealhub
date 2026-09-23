@@ -1,0 +1,23 @@
+server:
+  listen: ":8080"
+  externalURL: "https://sealhub.example.com"
+
+github:
+  owner: "your-github-org"
+  repo: "sealhub-data"
+  branch: "main"
+  auth:
+    patFile: "/run/secrets/github-pat"
+
+git:
+  localPath: "/var/lib/sealhub/repo"
+
+encryption:
+  keyringFile: "/run/secrets/keyring"
+
+auth:
+  bootstrapToken: ""   # or SEALHUB_BOOTSTRAP_TOKEN
+  jwtSecretFile: "/run/secrets/jwt-secret"
+
+freshness:
+  pollInterval: "15s"

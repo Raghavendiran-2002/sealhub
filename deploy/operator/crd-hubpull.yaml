@@ -1,0 +1,58 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: hubpulls.sealhub.io
+spec:
+  group: sealhub.io
+  names:
+    kind: HubPull
+    listKind: HubPullList
+    plural: hubpulls
+    singular: hubpull
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [server, documentPath, auth, target]
+              properties:
+                server:
+                  type: string
+                documentPath:
+                  type: string
+                watch:
+                  type: boolean
+                refreshInterval:
+                  type: string
+                auth:
+                  type: object
+                  properties:
+                    secretRef:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        key:
+                          type: string
+                target:
+                  type: object
+                  properties:
+                    kind:
+                      type: string
+                    template:
+                      type: string
+            status:
+              type: object
+              properties:
+                observedVersion:
+                  type: integer
+                lastSyncTime:
+                  type: string
+      subresources:
+        status: {}
