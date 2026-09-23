@@ -31,7 +31,9 @@ type GitStore struct {
 	broker    *changes.Broker
 	servedSHA plumbing.Hash
 	ready     bool
-	useSSH    bool
+	useSSH      bool
+	commitName  string
+	commitEmail string
 }
 
 type Options struct {
@@ -39,9 +41,11 @@ type Options struct {
 	CloneURL  string
 	Branch    string
 	PATFile   string
-	UseSSH    bool
-	Keyring   *crypto.KeyRing
-	Broker    *changes.Broker
+	UseSSH      bool
+	Keyring     *crypto.KeyRing
+	Broker      *changes.Broker
+	CommitName  string
+	CommitEmail string
 }
 
 func OpenOrClone(ctx context.Context, opt Options) (*GitStore, error) {
@@ -59,14 +63,24 @@ func OpenOrClone(ctx context.Context, opt Options) (*GitStore, error) {
 	if opt.Broker == nil {
 		opt.Broker = changes.NewBroker()
 	}
+	commitName := opt.CommitName
+	if commitName == "" {
+		commitName = "SealHub hubd"
+	}
+	commitEmail := opt.CommitEmail
+	if commitEmail == "" {
+		commitEmail = "sealhub@localhost"
+	}
 	gs := &GitStore{
-		workDir: opt.LocalPath,
-		branch:  opt.Branch,
-		pat:     patFn,
-		keyring: opt.Keyring,
-		index:   NewIndex(),
-		broker:  opt.Broker,
-		useSSH:  useSSH,
+		workDir:     opt.LocalPath,
+		branch:      opt.Branch,
+		pat:         patFn,
+		keyring:     opt.Keyring,
+		index:       NewIndex(),
+		broker:      opt.Broker,
+		useSSH:      useSSH,
+		commitName:  commitName,
+		commitEmail: commitEmail,
 	}
 	if err := os.MkdirAll(opt.LocalPath, 0o755); err != nil {
 		return nil, err
@@ -105,6 +119,9 @@ func OpenOrClone(ctx context.Context, opt Options) (*GitStore, error) {
 		return nil, err
 	}
 	gs.repo = repo
+	if err := gs.ensureGitIdentity(ctx); err != nil {
+		return nil, err
+	}
 	if err := gs.refreshIndex(true); err != nil {
 		return nil, err
 	}
@@ -326,7 +343,7 @@ func (gs *GitStore) Apply(ctx context.Context, path, body, contentType string, e
 		return nil, fmt.Errorf("git add: %w: %s", err, string(out))
 	}
 	msg := fmt.Sprintf("sealhub: apply %s", path)
-	if out, err := exec.CommandContext(ctx, "git", "-C", gs.workDir, "commit", "-m", msg).CombinedOutput(); err != nil {
+	if out, err := gs.gitCommit(ctx, msg); err != nil {
 		if !strings.Contains(string(out), "nothing to commit") {
 			return nil, fmt.Errorf("git commit: %w: %s", err, string(out))
 		}
@@ -371,7 +388,7 @@ func (gs *GitStore) Delete(ctx context.Context, path string, expectedVersion int
 		return fmt.Errorf("git rm: %w: %s", err, string(out))
 	}
 	msg := fmt.Sprintf("sealhub: delete %s", path)
-	if out, err := exec.CommandContext(ctx, "git", "-C", gs.workDir, "commit", "-m", msg).CombinedOutput(); err != nil {
+	if out, err := gs.gitCommit(ctx, msg); err != nil {
 		return fmt.Errorf("git commit: %w: %s", err, string(out))
 	}
 	if out, err := exec.CommandContext(ctx, "git", "-C", gs.workDir, "push", "origin", "HEAD:"+gs.branch).CombinedOutput(); err != nil {
@@ -384,6 +401,30 @@ func (gs *GitStore) ReadSystemFile(relpath string) ([]byte, error) {
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
 	return gs.readFileAtHead(relpath)
+}
+
+func (gs *GitStore) ensureGitIdentity(ctx context.Context) error {
+	for _, spec := range [][2]string{
+		{"user.name", gs.commitName},
+		{"user.email", gs.commitEmail},
+	} {
+		out, err := exec.CommandContext(ctx, "git", "-C", gs.workDir, "config", spec[0], spec[1]).CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("git config %s: %w: %s", spec[0], err, string(out))
+		}
+	}
+	return nil
+}
+
+func (gs *GitStore) gitCommit(ctx context.Context, msg string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "git", "-C", gs.workDir, "commit", "-m", msg)
+	cmd.Env = append(os.Environ(),
+		"GIT_AUTHOR_NAME="+gs.commitName,
+		"GIT_AUTHOR_EMAIL="+gs.commitEmail,
+		"GIT_COMMITTER_NAME="+gs.commitName,
+		"GIT_COMMITTER_EMAIL="+gs.commitEmail,
+	)
+	return cmd.CombinedOutput()
 }
 
 func (gs *GitStore) setRemoteURL(token string) error {

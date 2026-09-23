@@ -40,12 +40,14 @@ func main() {
 
 	ctx := context.Background()
 	gs, err := store.OpenOrClone(ctx, store.Options{
-		LocalPath: cfg.Git.LocalPath,
-		CloneURL:  cfg.CloneURL(),
-		Branch:    cfg.GitHub.Branch,
-		PATFile:   cfg.GitHub.Auth.PATFile,
-		UseSSH:    cfg.GitAuthSSH(),
-		Keyring:   kr,
+		LocalPath:   cfg.Git.LocalPath,
+		CloneURL:    cfg.CloneURL(),
+		Branch:      cfg.GitHub.Branch,
+		PATFile:     cfg.GitHub.Auth.PATFile,
+		UseSSH:      cfg.GitAuthSSH(),
+		Keyring:     kr,
+		CommitName:  cfg.Git.CommitName,
+		CommitEmail: cfg.Git.CommitEmail,
 	})
 	if err != nil {
 		log.Fatalf("store: %v", err)

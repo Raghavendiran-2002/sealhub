@@ -37,7 +37,9 @@ type GitHubAuth struct {
 }
 
 type GitConfig struct {
-	LocalPath string `yaml:"localPath"`
+	LocalPath   string `yaml:"localPath"`
+	CommitName  string `yaml:"commitName"`
+	CommitEmail string `yaml:"commitEmail"`
 }
 
 type EncryptionConfig struct {
@@ -78,6 +80,12 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Freshness.PollInterval == "" {
 		c.Freshness.PollInterval = "15s"
+	}
+	if c.Git.CommitName == "" {
+		c.Git.CommitName = "SealHub hubd"
+	}
+	if c.Git.CommitEmail == "" {
+		c.Git.CommitEmail = "sealhub@localhost"
 	}
 	if c.Auth.JWTSecretFile == "" {
 		c.Auth.JWTSecretFile = ""

@@ -11,6 +11,8 @@ github:
 
 git:
   localPath: "/var/lib/sealhub/repo"
+  commitName: "SealHub hubd"
+  commitEmail: "sealhub@localhost"
 
 encryption:
   keyringFile: "/run/secrets/keyring"

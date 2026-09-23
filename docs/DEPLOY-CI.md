@@ -25,7 +25,7 @@ repo:Raghavendiran-2002@70228368/sealhub@1382946894:environment:tailscale
 
 Credential tags: **`tag:ci` only**. Scope: **`auth_keys`**.
 
-**Optional:** `PI_SUDO_PASS` — only if `/etc/sealhub/config.yaml` is still `root:root` and passwordless sudo is unavailable.
+**Recommended if deploy fails on config read:** `PI_SUDO_PASS` — pi user sudo password so CI can read/chown `/etc/sealhub/*` when files are `root:root`. After one successful deploy, chown is fixed and sudo may no longer be needed.
 
 **Not used:** `TS_NODE_AUTHKEY` in deploy workflow, `SSH_PRIVATE_KEY` (Tailscale SSH).
 

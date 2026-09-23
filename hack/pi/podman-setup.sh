@@ -66,6 +66,8 @@ github:
 
 git:
   localPath: /var/lib/sealhub/repo
+  commitName: SealHub Pi
+  commitEmail: sealhub@live
 
 encryption:
   keyringFile: /run/secrets/keyring
@@ -90,6 +92,8 @@ if [[ ! -d "$REPO_DIR/.git" ]]; then
   echo "Cloning $DATA_REPO ..."
   git clone --branch main --single-branch "$DATA_REPO" "$REPO_DIR"
 fi
+git -C "$REPO_DIR" config user.name "SealHub Pi"
+git -C "$REPO_DIR" config user.email "sealhub@live"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=sync-run-config.sh

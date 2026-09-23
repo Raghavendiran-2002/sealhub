@@ -15,24 +15,13 @@ if [[ ! -f "$CONFIG_DIR/config.yaml" ]]; then
   exit 1
 fi
 
-sudo_cmd() {
-  if [[ -n "${SUDO_PASS:-}" ]]; then
-    echo "$SUDO_PASS" | sudo -S "$@"
-  elif sudo -n true 2>/dev/null; then
-    sudo -n "$@"
-  else
-    return 1
-  fi
-}
-
-# One-time fix if config was left root:root (common after manual edits).
-if [[ ! -r "$CONFIG_DIR/config.yaml" ]] && sudo_cmd true 2>/dev/null; then
-  sudo_cmd chown "$USER:$USER" "$CONFIG_DIR/config.yaml" "$CONFIG_DIR/keyring" "$CONFIG_DIR/jwt-secret" 2>/dev/null || true
-  sudo_cmd chmod 644 "$CONFIG_DIR/config.yaml" 2>/dev/null || true
-fi
-
 # shellcheck source=sync-run-config.sh
 source "$SCRIPT_DIR/sync-run-config.sh"
+
+if [[ -d "$REPO_DIR/.git" ]]; then
+  git -C "$REPO_DIR" config user.name "SealHub Pi"
+  git -C "$REPO_DIR" config user.email "sealhub@live"
+fi
 
 if [[ -n "${GHCR_TOKEN:-}" ]]; then
   echo "$GHCR_TOKEN" | podman login ghcr.io -u "${GHCR_USER:-raghavendiran-2002}" --password-stdin
