@@ -17,7 +17,6 @@ on:
 permissions:
   contents: read
   packages: read
-  id-token: write # Tailscale workload identity (TS_AUDIENCE + TS_OAUTH_CLIENT_ID)
 
 concurrency:
   group: sealhub-deploy-pi
@@ -59,23 +58,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate Tailscale credentials
+      - name: Validate Tailscale auth key
         shell: bash
         env:
-          TS_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          TS_AUD: ${{ secrets.TS_AUDIENCE }}
+          TS_AUTHKEY: ${{ secrets.TS_NODE_AUTHKEY }}
         run: |
           set -euo pipefail
-          if [[ -z "$TS_ID" || -z "$TS_AUD" ]]; then
-            echo "::error::Missing TS_OAUTH_CLIENT_ID and/or TS_AUDIENCE on environment tailscale (Workload Identity). Federated setup does not use TS_OAUTH_SECRET."
+          if [[ -z "$TS_AUTHKEY" ]]; then
+            echo "::error::Missing TS_NODE_AUTHKEY on environment tailscale. Create a reusable+ephemeral auth key tagged tag:ci in Tailscale admin."
             exit 1
           fi
 
       - name: Connect Tailscale
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ secrets.TS_AUDIENCE }}
+          authkey: ${{ secrets.TS_NODE_AUTHKEY }}
           tags: ${{ env.TS_CI_TAG }}
           ping: live,${{ env.PI_TAILSCALE_IP }}
 

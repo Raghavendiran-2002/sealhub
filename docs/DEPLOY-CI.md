@@ -10,28 +10,30 @@ Workflow: [.github/workflows/deploy.yaml](../.github/workflows/deploy.yaml)
 
 ## GitHub environment `tailscale`
 
-**Settings → Environments → tailscale → Environment secrets** (matches this repo):
+**Settings → Environments → tailscale → Environment secrets:**
 
 | Secret | Purpose |
 |--------|---------|
-| `TS_OAUTH_CLIENT_ID` | Tailscale **Workload Identity** federated client ID |
-| `TS_AUDIENCE` | Audience string from Tailscale federated identity setup |
+| `TS_NODE_AUTHKEY` | Tailscale **auth key** for CI (see below) |
 | `GHCR_READ_TOKEN` | (Optional) PAT with `read:packages` if GHCR images are private |
 
-The workflow uses **GitHub OIDC → Tailscale** (`audience` + `oauth-client-id`), **not** `TS_OAUTH_SECRET`. Do not confuse with a classic OAuth client secret.
+### Create `TS_NODE_AUTHKEY`
 
-`TS_NODE_AUTHKEY` is unused by this workflow (auth-key login is an alternative; federated identity is preferred).
+In [Tailscale admin → Settings → Keys](https://login.tailscale.com/admin/settings/keys):
 
-Federated identity needs **`auth_keys`** scope and must allow tag **`tag:ci`**.
+- **Reusable** + **Ephemeral**
+- **Tags:** `tag:ci` (must exist in `tagOwners`)
+- **Pre-approved** if your tailnet uses device approval
+
+Paste the key into environment secret **`TS_NODE_AUTHKEY`**.
 
 **Not used:** `SSH_PRIVATE_KEY` — authentication is Tailscale SSH + ACLs.
 
-### Troubleshooting: `OAuth identity empty`
+### Troubleshooting: JWT exchange 403 (Workload Identity)
 
-1. Secrets must be on **environment `tailscale`**, not only repository secrets.
-2. Required: **`TS_OAUTH_CLIENT_ID`** + **`TS_AUDIENCE`** (not `TS_OAUTH_SECRET`).
-3. Workflow needs `permissions: id-token: write` (already set in deploy.yaml).
-4. Re-run **SealHub Deploy Pi**.
+If you previously used **`TS_OAUTH_CLIENT_ID`** + **`TS_AUDIENCE`**, a `403` on JWT exchange means GitHub is not trusted yet in **Admin → Settings → Trust credentials** (link GitHub Actions OIDC to your federated client and matching audience). This workflow uses an **auth key** instead so deploy works without that setup.
+
+Optional: `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE` can remain in the environment for other tooling; deploy ignores them.
 
 ## One-time: Tailscale on the Pi
 
