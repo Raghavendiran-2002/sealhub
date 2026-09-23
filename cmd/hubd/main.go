@@ -44,6 +44,7 @@ func main() {
 		CloneURL:  cfg.CloneURL(),
 		Branch:    cfg.GitHub.Branch,
 		PATFile:   cfg.GitHub.Auth.PATFile,
+		UseSSH:    cfg.GitAuthSSH(),
 		Keyring:   kr,
 	})
 	if err != nil {

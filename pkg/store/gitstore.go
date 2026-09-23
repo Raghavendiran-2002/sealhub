@@ -30,6 +30,7 @@ type GitStore struct {
 	broker    *changes.Broker
 	servedSHA plumbing.Hash
 	ready     bool
+	useSSH    bool
 }
 
 type Options struct {
@@ -37,12 +38,17 @@ type Options struct {
 	CloneURL  string
 	Branch    string
 	PATFile   string
+	UseSSH    bool
 	Keyring   *crypto.KeyRing
 	Broker    *changes.Broker
 }
 
 func OpenOrClone(ctx context.Context, opt Options) (*GitStore, error) {
+	useSSH := opt.UseSSH || strings.HasPrefix(opt.CloneURL, "git@")
 	patFn := func() (string, error) {
+		if useSSH {
+			return "", nil
+		}
 		b, err := os.ReadFile(opt.PATFile)
 		if err != nil {
 			return "", err
@@ -59,28 +65,40 @@ func OpenOrClone(ctx context.Context, opt Options) (*GitStore, error) {
 		keyring: opt.Keyring,
 		index:   NewIndex(),
 		broker:  opt.Broker,
+		useSSH:  useSSH,
 	}
 	if err := os.MkdirAll(opt.LocalPath, 0o755); err != nil {
 		return nil, err
 	}
 	repo, err := git.PlainOpen(opt.LocalPath)
 	if err == git.ErrRepositoryNotExists {
-		token, err := patFn()
-		if err != nil {
-			return nil, err
-		}
-		repo, err = git.PlainCloneContext(ctx, opt.LocalPath, false, &git.CloneOptions{
-			URL: opt.CloneURL,
-			Auth: &githttp.BasicAuth{
-				Username: "x-access-token",
-				Password: token,
-			},
-			ReferenceName: plumbing.NewBranchReferenceName(opt.Branch),
-			SingleBranch:  true,
-			Depth:         1,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("clone: %w", err)
+		if useSSH {
+			out, err := exec.CommandContext(ctx, "git", "clone", "--branch", opt.Branch, "--single-branch", opt.CloneURL, opt.LocalPath).CombinedOutput()
+			if err != nil {
+				return nil, fmt.Errorf("git clone: %w: %s", err, string(out))
+			}
+			repo, err = git.PlainOpen(opt.LocalPath)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			token, err := patFn()
+			if err != nil {
+				return nil, err
+			}
+			repo, err = git.PlainCloneContext(ctx, opt.LocalPath, false, &git.CloneOptions{
+				URL: opt.CloneURL,
+				Auth: &githttp.BasicAuth{
+					Username: "x-access-token",
+					Password: token,
+				},
+				ReferenceName: plumbing.NewBranchReferenceName(opt.Branch),
+				SingleBranch:  true,
+				Depth:         1,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("clone: %w", err)
+			}
 		}
 	} else if err != nil {
 		return nil, err
@@ -103,13 +121,15 @@ func (gs *GitStore) Broker() *changes.Broker  { return gs.broker }
 func (gs *GitStore) Keyring() *crypto.KeyRing { return gs.keyring }
 
 func (gs *GitStore) Poll(ctx context.Context) error {
-	token, err := gs.pat()
-	if err != nil {
-		return err
-	}
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
-	_ = gs.setRemoteURL(token)
+	if !gs.useSSH {
+		token, err := gs.pat()
+		if err != nil {
+			return err
+		}
+		_ = gs.setRemoteURL(token)
+	}
 	out, err := exec.CommandContext(ctx, "git", "-C", gs.workDir, "fetch", "origin", gs.branch).CombinedOutput()
 	if err != nil && !strings.Contains(string(out), "Already up to date") {
 		return fmt.Errorf("fetch: %w: %s", err, string(out))
@@ -296,11 +316,13 @@ func (gs *GitStore) Apply(ctx context.Context, path, body, contentType string, e
 	if err := os.WriteFile(abs, raw, 0o644); err != nil {
 		return nil, err
 	}
-	token, err := gs.pat()
-	if err != nil {
-		return nil, err
+	if !gs.useSSH {
+		token, err := gs.pat()
+		if err != nil {
+			return nil, err
+		}
+		_ = gs.setRemoteURL(token)
 	}
-	_ = gs.setRemoteURL(token)
 	if out, err := exec.CommandContext(ctx, "git", "-C", gs.workDir, "add", gitPath).CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("git add: %w: %s", err, string(out))
 	}
@@ -339,11 +361,13 @@ func (gs *GitStore) Delete(ctx context.Context, path string, expectedVersion int
 	if expectedVersion > 0 && existing.Metadata.Version != expectedVersion {
 		return ErrConflict
 	}
-	token, err := gs.pat()
-	if err != nil {
-		return err
+	if !gs.useSSH {
+		token, err := gs.pat()
+		if err != nil {
+			return err
+		}
+		_ = gs.setRemoteURL(token)
 	}
-	_ = gs.setRemoteURL(token)
 	if out, err := exec.CommandContext(ctx, "git", "-C", gs.workDir, "rm", gitPath).CombinedOutput(); err != nil {
 		return fmt.Errorf("git rm: %w: %s", err, string(out))
 	}
@@ -364,6 +388,9 @@ func (gs *GitStore) ReadSystemFile(relpath string) ([]byte, error) {
 }
 
 func (gs *GitStore) setRemoteURL(token string) error {
+	if gs.useSSH {
+		return nil
+	}
 	cfg, err := gs.repo.Config()
 	if err != nil || cfg.Remotes["origin"] == nil || len(cfg.Remotes["origin"].URLs) == 0 {
 		return nil

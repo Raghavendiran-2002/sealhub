@@ -31,6 +31,8 @@ type GitHubConfig struct {
 }
 
 type GitHubAuth struct {
+	// Type is "pat" (default) or "ssh" (use Pi/host SSH keys; no patFile).
+	Type    string `yaml:"type"`
 	PATFile string `yaml:"patFile"`
 }
 
@@ -92,8 +94,12 @@ func (c *Config) validate() error {
 	if c.GitHub.Owner == "" || c.GitHub.Repo == "" {
 		return fmt.Errorf("github.owner and github.repo are required")
 	}
-	if c.GitHub.Auth.PATFile == "" {
-		return fmt.Errorf("github.auth.patFile is required")
+	authType := c.GitHub.Auth.Type
+	if authType == "" {
+		authType = "pat"
+	}
+	if authType == "pat" && c.GitHub.Auth.PATFile == "" {
+		return fmt.Errorf("github.auth.patFile is required when auth.type is pat")
 	}
 	if c.Git.LocalPath == "" {
 		return fmt.Errorf("git.localPath is required")
@@ -113,5 +119,12 @@ func (c *Config) PollDuration() time.Duration {
 }
 
 func (c *Config) CloneURL() string {
+	if c.GitHub.Auth.Type == "ssh" {
+		return fmt.Sprintf("git@github.com:%s/%s.git", c.GitHub.Owner, c.GitHub.Repo)
+	}
 	return fmt.Sprintf("https://github.com/%s/%s.git", c.GitHub.Owner, c.GitHub.Repo)
+}
+
+func (c *Config) GitAuthSSH() bool {
+	return c.GitHub.Auth.Type == "ssh"
 }

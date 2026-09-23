@@ -7,7 +7,7 @@ variable "IMAGE_VERSION" {
 }
 
 variable "IMAGE_PREFIX" {
-  default = "ghcr.io/raghavendiran/sealhub"
+  default = "ghcr.io/raghavendiran-2002/sealhub"
 }
 
 variable "GITHUB_REF_NAME" {
