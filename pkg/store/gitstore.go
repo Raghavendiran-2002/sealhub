@@ -19,8 +19,9 @@ import (
 )
 
 // GitStore syncs a git worktree with GitHub and serves documents.
+// go-git storage is not safe for concurrent use; mu serializes all repo access.
 type GitStore struct {
-	mu        sync.RWMutex
+	mu        sync.Mutex
 	repo      *git.Repository
 	workDir   string
 	branch    string
@@ -112,8 +113,8 @@ func OpenOrClone(ctx context.Context, opt Options) (*GitStore, error) {
 }
 
 func (gs *GitStore) Ready() bool {
-	gs.mu.RLock()
-	defer gs.mu.RUnlock()
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
 	return gs.ready
 }
 
@@ -209,11 +210,9 @@ func (gs *GitStore) refreshIndexLocked(initial bool) error {
 }
 
 func (gs *GitStore) readFileAtHead(rel string) ([]byte, error) {
-	sha, err := gs.headHash()
-	if err != nil {
-		return nil, err
-	}
-	return gs.readBlobAtCommit(sha, rel)
+	// Worktree reads avoid go-git (not concurrent-safe); index refresh still uses go-git at HEAD.
+	p := filepath.Join(gs.workDir, filepath.FromSlash(rel))
+	return os.ReadFile(p)
 }
 
 func (gs *GitStore) readBlobAtCommit(sha plumbing.Hash, path string) ([]byte, error) {
@@ -237,8 +236,8 @@ func (gs *GitStore) readBlobAtCommit(sha plumbing.Hash, path string) ([]byte, er
 }
 
 func (gs *GitStore) GetDocument(path string) (*document.Envelope, error) {
-	gs.mu.RLock()
-	defer gs.mu.RUnlock()
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
 	if !gs.ready {
 		return nil, fmt.Errorf("store not ready")
 	}
@@ -382,8 +381,8 @@ func (gs *GitStore) Delete(ctx context.Context, path string, expectedVersion int
 }
 
 func (gs *GitStore) ReadSystemFile(relpath string) ([]byte, error) {
-	gs.mu.RLock()
-	defer gs.mu.RUnlock()
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
 	return gs.readFileAtHead(relpath)
 }
 

@@ -60,6 +60,7 @@ func main() {
 		for range t.C {
 			if err := gs.Poll(context.Background()); err != nil {
 				log.Printf("poll: %v", err)
+				continue
 			}
 			srv.ReloadSystemAuth()
 		}
