@@ -40,6 +40,9 @@ jobs:
     if: ${{ inputs.run == true }}
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout sealhub (Dockerfile only)
+        uses: actions/checkout@v4
+
       - name: Resolve tag
         id: meta
         shell: bash
@@ -113,9 +116,11 @@ jobs:
             go build -C cmd \
               -trimpath \
               -ldflags="-X github.com/pocket-id/pocket-id/backend/internal/common.Version=${VERSION} -buildid=${VERSION}" \
-              -o ../linux/arm/v7/pocket-id \
+              -o ../linux/arm/v7/sealhub-prebuilt \
               .
-          file ../linux/arm/v7/pocket-id
+          ls -la ../linux/arm/v7/
+          test -f ../linux/arm/v7/sealhub-prebuilt
+          file ../linux/arm/v7/sealhub-prebuilt
 
       - uses: docker/setup-qemu-action@v3
 
@@ -127,16 +132,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify Docker build context includes binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN="pocket-id-src/linux/arm/v7/sealhub-prebuilt"
+          test -f "$BIN"
+          echo "prebuilt size: $(wc -c < "$BIN") bytes"
+
       - name: Build and push Docker image (linux/arm/v7)
         uses: docker/build-push-action@v6
         with:
           context: pocket-id-src
-          file: pocket-id-src/docker/Dockerfile-prebuilt
+          file: hack/docker/pocket-id-prebuilt-armv7.Dockerfile
           platforms: linux/arm/v7
           push: true
-          build-args: |
-            TARGETARCH=arm
-            TARGETVARIANT=v7
           tags: |
             ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.tag }}-armv7
             ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.tag_short }}-armv7

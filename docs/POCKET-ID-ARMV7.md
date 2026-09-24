@@ -6,7 +6,7 @@ SealHub provides an **optional** GitHub Actions workflow that:
 
 1. Clones **upstream Pocket ID at a release tag** (no Pocket ID source in the sealhub repo).
 2. Builds the frontend and cross-compiles the Go binary for **`GOOS=linux GOARCH=arm GOARM=7`**.
-3. Packages with upstream **`docker/Dockerfile-prebuilt`**.
+3. Packages with **`hack/docker/pocket-id-prebuilt-armv7.Dockerfile`** (binary as `linux/arm/v7/sealhub-prebuilt` — upstream `.gitignore` ignores files named `pocket-id`, which would drop the binary from the Docker context).
 4. Pushes to **GHCR** under this repo’s package namespace.
 
 ## Run the workflow
