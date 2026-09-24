@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Start Pocket ID with podman (no compose plugin required).
-# Requires 64-bit OS (aarch64/amd64): upstream image has no arm/v7 build.
+# Upstream image: amd64/arm64 only — not armv7.
 set -euo pipefail
 
-POCKET_ID_IMAGE="${POCKET_ID_IMAGE:-ghcr.io/raghavendiran-2002/sealhub/pocket-id:armv7-latest}"
+POCKET_ID_IMAGE="${POCKET_ID_IMAGE:-ghcr.io/pocket-id/pocket-id:v2.14.0}"
 
 if [[ "$(uname -m)" == "armv7l" ]]; then
-  echo "Using SealHub armv7 image: $POCKET_ID_IMAGE" >&2
-  echo "Build via Actions → Pocket ID armv7 image (see docs/POCKET-ID-ARMV7.md)" >&2
+  echo "Pocket ID upstream image has no linux/arm/v7 build; use arm64 Pi OS or run Pocket ID elsewhere." >&2
+  echo "Data restore still works: hub pocket restore -dir \$HOME/pocket-id" >&2
+  exit 1
 fi
 
 HOME_DIR="${POCKET_ID_HOME:-$HOME/pocket-id}"

@@ -162,7 +162,6 @@ export SEALHUB_SERVER="http://live:8080"
 | Watch | `hub watch secrets/homelab` |
 | Pocket ID backup | `hub pocket backup` → `pocket/homelab/pocket-id.db.yaml` + `secrets/homelab/pocket-id.env` |
 | Pocket ID restore | On Pi: `POCKET_ID_HOME=~/pocket-id hub pocket restore -no-stop` (see `hack/pi/`) |
-| Pocket ID **armv7** image | [POCKET-ID-ARMV7.md](POCKET-ID-ARMV7.md) — GHA builds from upstream release tag, pushes `ghcr.io/.../sealhub/pocket-id:*-armv7` |
 
 API paths are **without** the `data/` prefix (Git stores under `data/config/...`, `data/secrets/...`, `data/pocket/...`).
 
