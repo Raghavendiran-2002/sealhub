@@ -107,20 +107,23 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(tr -d '\n' < .version)"
+          OUT="linux/arm/v7/sealhub-prebuilt"
           mkdir -p linux/arm/v7
           rm -rf backend/frontend/dist
           cp -a frontend/dist backend/frontend/dist
           cd backend
           go mod download
+          # -o is relative to backend/ when building ./cmd (not -C cmd, which broke the output path)
           GOOS=linux GOARCH=arm GOARM=7 CGO_ENABLED=0 \
-            go build -C cmd \
+            go build \
               -trimpath \
               -ldflags="-X github.com/pocket-id/pocket-id/backend/internal/common.Version=${VERSION} -buildid=${VERSION}" \
-              -o ../linux/arm/v7/sealhub-prebuilt \
-              .
-          ls -la ../linux/arm/v7/
-          test -f ../linux/arm/v7/sealhub-prebuilt
-          file ../linux/arm/v7/sealhub-prebuilt
+              -o "../${OUT}" \
+              ./cmd
+          cd ..
+          ls -la linux/arm/v7/
+          test -f "${OUT}"
+          file "${OUT}"
 
       - uses: docker/setup-qemu-action@v3
 
