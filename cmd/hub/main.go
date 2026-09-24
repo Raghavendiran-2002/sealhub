@@ -111,6 +111,11 @@ func main() {
 		} else {
 			fatal("usage: hub token create --id NAME --read path")
 		}
+	case "pocket":
+		if len(args) < 2 {
+			fatal("usage: hub pocket backup|restore")
+		}
+		runPocket(*server, resolveToken(*token), args[1:])
 	default:
 		usage()
 		os.Exit(2)
@@ -127,9 +132,11 @@ Usage:
   hub delete <path>
   hub watch [prefix]
   hub auth login|logout|whoami
+  hub pocket backup|restore [-dir DIR] [-instance homelab] [-no-stop]
 
 Environment:
   SEALHUB_SERVER, SEALHUB_TOKEN or HUB_TOKEN
+  POCKET_ID_HOME — Pocket ID docker-compose directory
 `)
 }
 

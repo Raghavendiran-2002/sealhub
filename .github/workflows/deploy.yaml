@@ -32,7 +32,7 @@ env:
 
 jobs:
   deploy:
-    name: Deploy hubd to Pi (live)
+    name: Deploy hubd + hub CLI to Pi (live)
     runs-on: ubuntu-latest
     environment: tailscale
 
@@ -95,12 +95,20 @@ jobs:
 
       - name: Install deploy scripts on Pi
         run: |
-          for f in sync-run-config.sh deploy-hubd-ci.sh; do
+          for f in sync-run-config.sh deploy-hubd-ci.sh install-hub-cli-ci.sh; do
             ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
               "${{ steps.pi.outputs.target }}" \
               "cat > /tmp/$f && chmod +x /tmp/$f" \
               < "hack/pi/$f"
           done
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            "${{ steps.pi.outputs.target }}" \
+            "cat > /tmp/install-hub-cli.sh && chmod +x /tmp/install-hub-cli.sh" \
+            < "hack/shared/install-hub-cli.sh"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            "${{ steps.pi.outputs.target }}" \
+            "cat > /tmp/sealhub.env.example" \
+            < "hack/pi/sealhub.env.example"
 
       - name: Deploy on Pi
         env:
@@ -114,8 +122,30 @@ jobs:
             "HUBD_IMAGE='${HUBD_IMAGE}' GHCR_TOKEN='${GHCR_TOKEN:-}' GHCR_USER='raghavendiran-2002' \
              SUDO_PASS='${SUDO_PASS:-}' /tmp/deploy-hubd-ci.sh"
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Build hub CLI (linux/armv7)
+        run: GOOS=linux GOARCH=arm GOARM=7 go build -o hub-linux-armv7 ./cmd/hub
+
+      - name: Install hub CLI on Pi
+        run: |
+          set -euo pipefail
+          scp -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            hub-linux-armv7 \
+            "${{ steps.pi.outputs.target }}:/tmp/sealhub-hub"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            "${{ steps.pi.outputs.target }}" \
+            "/tmp/install-hub-cli-ci.sh /tmp/sealhub-hub /tmp/install-hub-cli.sh /tmp/sealhub.env.example"
+
       - name: Smoke check
         run: |
           ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
             "${{ steps.pi.outputs.target }}" \
             "curl -sf http://127.0.0.1:8080/healthz && echo && curl -sf http://127.0.0.1:8080/readyz && echo"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            "${{ steps.pi.outputs.target }}" \
+            'export PATH="$HOME/.local/bin:$PATH"; source "$HOME/.config/sealhub/env"; command -v hub; hub list config/homelab | head -c 200; echo'

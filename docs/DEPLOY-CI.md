@@ -130,7 +130,7 @@ Run full bootstrap once (config, keyring, data clone):
 ./hack/pi/podman-setup.sh
 ```
 
-CI deploy only **updates the hubd image** and restarts the container; it does not wipe `/etc/sealhub`.
+CI deploy **updates the hubd image**, restarts the container, and installs the latest **`hub`** CLI to **`~/.local/bin/hub`** (linux/armv7) with **`~/.config/sealhub/env`**. It does not wipe `/etc/sealhub`.
 
 ## Manual deploy
 

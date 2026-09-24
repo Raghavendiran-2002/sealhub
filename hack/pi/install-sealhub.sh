@@ -23,7 +23,9 @@ fi
 cd "$INSTALL_DIR/sealhub"
 git pull --ff-only || true
 go build -o "$INSTALL_DIR/hubd" ./cmd/hubd
-go build -o "$INSTALL_DIR/hub" ./cmd/hub
+chmod +x hack/shared/install-hub-cli.sh
+go build -o /tmp/sealhub-hub ./cmd/hub
+hack/shared/install-hub-cli.sh /tmp/sealhub-hub hack/pi/sealhub.env.example
 
 if [[ ! -f "$CONFIG_DIR/keyring" ]]; then
   head -c 32 /dev/urandom | base64 | sudo tee "$CONFIG_DIR/keyring" >/dev/null
@@ -84,6 +86,6 @@ sudo systemctl enable sealhub-hubd
 sudo systemctl restart sealhub-hubd
 
 echo "SealHub hubd started. Test:"
-echo "  SEALHUB_TOKEN=$BOOTSTRAP_TOKEN $INSTALL_DIR/hub --server http://127.0.0.1:8080 list"
-echo "  SEALHUB_TOKEN=$BOOTSTRAP_TOKEN $INSTALL_DIR/hub --server http://127.0.0.1:8080 get config/homelab/settings.yaml"
-echo "  SEALHUB_TOKEN=$BOOTSTRAP_TOKEN $INSTALL_DIR/hub --server http://127.0.0.1:8080 get secrets/homelab/sample.yaml"
+echo "  source ~/.config/sealhub/env && hub list config/homelab"
+echo "  hub get config/homelab/settings.yaml"
+echo "  hub get secrets/homelab/sample.yaml"

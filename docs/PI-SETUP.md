@@ -129,21 +129,19 @@ podman logs sealhub-hubd | tail -30
 
 ## Install `hub` CLI on the Pi
 
-```bash
-cd ~/sealhub
-go build -o hub ./cmd/hub
-mkdir -p ~/.local/bin
-mv hub ~/.local/bin/
-grep -q '.local/bin' ~/.bashrc || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-```
+**CI (recommended):** every [SealHub Deploy Pi](../.github/workflows/deploy.yaml) run builds **linux/armv7** `hub` and installs to **`~/.local/bin/hub`** with **`~/.config/sealhub/env`**.
 
-Environment (add to `~/.bashrc`):
+**Manual:**
 
 ```bash
-export SEALHUB_SERVER="http://127.0.0.1:8080"
-export SEALHUB_TOKEN="your-bootstrap-token"
+cd ~/sealhub && git pull
+chmod +x hack/pi/install-hub-cli.sh
+./hack/pi/install-hub-cli.sh    # builds and installs ~/.local/bin/hub
+source ~/.config/sealhub/env
+hub list config/homelab
 ```
+
+Do **not** use `/opt/sealhub/hub` — use **`hub`** on PATH after opening a new shell or `source ~/.config/sealhub/env`.
 
 From another machine on the tailnet:
 
@@ -162,8 +160,11 @@ export SEALHUB_SERVER="http://live:8080"
 | Create/update | `hub apply secrets/homelab/my.yaml -f ./my.yaml` |
 | Delete | `hub delete secrets/homelab/my.yaml` |
 | Watch | `hub watch secrets/homelab` |
+| Pocket ID backup | `hub pocket backup` → `pocket/homelab/pocket-id.db.yaml` + `secrets/homelab/pocket-id.env` |
+| Pocket ID restore | On Pi: `POCKET_ID_HOME=~/pocket-id hub pocket restore -no-stop` (see `hack/pi/`) |
+| Pocket ID **armv7** image | [POCKET-ID-ARMV7.md](POCKET-ID-ARMV7.md) — GHA builds from upstream release tag, pushes `ghcr.io/.../sealhub/pocket-id:*-armv7` |
 
-API paths are **without** the `data/` prefix (Git stores under `data/config/...`, `data/secrets/...`).
+API paths are **without** the `data/` prefix (Git stores under `data/config/...`, `data/secrets/...`, `data/pocket/...`).
 
 Secrets under `secrets/...` are **encrypted** on apply; `config/...` stays plain YAML.
 

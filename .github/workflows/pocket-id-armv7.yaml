@@ -1,0 +1,155 @@
+name: Pocket ID armv7 image
+
+# Clones https://github.com/pocket-id/pocket-id at a release tag (no vendored source in sealhub).
+# Upstream GHCR images are amd64/arm64 only; this builds linux/arm/v7 for Raspberry Pi (32-bit).
+
+on:
+  workflow_dispatch:
+    inputs:
+      run:
+        description: "Run build (false = workflow exits without building)"
+        type: boolean
+        required: true
+        default: false
+      pocket_id_tag:
+        description: "Pocket ID release tag (see https://github.com/pocket-id/pocket-id/releases)"
+        type: string
+        required: true
+        default: "v2.14.0"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY_IMAGE: ghcr.io/raghavendiran-2002/sealhub/pocket-id
+  UPSTREAM_REPO: pocket-id/pocket-id
+
+jobs:
+  disabled:
+    name: Skipped (run=false)
+    if: ${{ inputs.run != true }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Not building
+        run: |
+          echo "Build skipped. Re-run with run=true and pocket_id_tag set (e.g. v2.14.0)."
+
+  build:
+    name: Build and push armv7
+    if: ${{ inputs.run == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve tag
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          RAW="${{ inputs.pocket_id_tag }}"
+          if [[ -z "$RAW" ]]; then
+            echo "::error::pocket_id_tag is required"
+            exit 1
+          fi
+          # Accept v2.14.0 or 2.14.0
+          if [[ "$RAW" != v* ]]; then
+            RAW="v${RAW}"
+          fi
+          echo "ref=$RAW" >> "$GITHUB_OUTPUT"
+          echo "tag=${RAW}" >> "$GITHUB_OUTPUT"
+          echo "tag_short=${RAW#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Pocket ID upstream
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPSTREAM_REPO }}
+          ref: ${{ steps.meta.outputs.ref }}
+          path: pocket-id-src
+
+      - name: Verify release ref
+        shell: bash
+        working-directory: pocket-id-src
+        run: |
+          set -euo pipefail
+          test -f docker/Dockerfile-prebuilt
+          test -f backend/go.mod
+          echo "Upstream at $(git rev-parse --short HEAD) tag=${{ steps.meta.outputs.ref }}"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: pocket-id-src/pnpm-lock.yaml
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: pocket-id-src/backend/go.mod
+          cache-dependency-path: pocket-id-src/backend/go.sum
+
+      - name: Build frontend
+        shell: bash
+        working-directory: pocket-id-src
+        run: |
+          set -euo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+          BUILD_OUTPUT_PATH=dist pnpm --filter pocket-id-frontend run build
+
+      - name: Cross-compile pocket-id (linux/arm/v7)
+        shell: bash
+        working-directory: pocket-id-src
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '\n' < .version)"
+          mkdir -p linux/arm/v7
+          rm -rf backend/frontend/dist
+          cp -a frontend/dist backend/frontend/dist
+          cd backend
+          go mod download
+          GOOS=linux GOARCH=arm GOARM=7 CGO_ENABLED=0 \
+            go build -C cmd \
+              -trimpath \
+              -ldflags="-X github.com/pocket-id/pocket-id/backend/internal/common.Version=${VERSION} -buildid=${VERSION}" \
+              -o ../linux/arm/v7/pocket-id \
+              .
+          file ../linux/arm/v7/pocket-id
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image (linux/arm/v7)
+        uses: docker/build-push-action@v6
+        with:
+          context: pocket-id-src
+          file: pocket-id-src/docker/Dockerfile-prebuilt
+          platforms: linux/arm/v7
+          push: true
+          build-args: |
+            TARGETARCH=arm
+            TARGETVARIANT=v7
+          tags: |
+            ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.tag }}-armv7
+            ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.tag_short }}-armv7
+            ${{ env.REGISTRY_IMAGE }}:armv7-latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/pocket-id/pocket-id
+            org.opencontainers.image.version=${{ steps.meta.outputs.tag }}
+            org.opencontainers.image.title=Pocket ID (armv7 rebuild)
+            org.opencontainers.image.description=Unofficial linux/arm/v7 image built from upstream Pocket ID source; not published by the Pocket ID project.
+            io.sealhub.upstream.tag=${{ steps.meta.outputs.tag }}
+
+      - name: Summary
+        run: |
+          echo "Pushed:"
+          echo "  ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.tag }}-armv7"
+          echo "  ${{ env.REGISTRY_IMAGE }}:armv7-latest"
