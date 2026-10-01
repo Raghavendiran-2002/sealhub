@@ -1,4 +1,4 @@
-FROM rust:1-alpine3.22 AS builder
+FROM rust:1-alpine AS builder
 
 WORKDIR /build
 RUN apk add --no-cache build-base
@@ -10,7 +10,7 @@ COPY templates ./templates
 WORKDIR /build/app
 RUN cargo build --locked --release
 
-FROM alpine:3.22
+FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates \
     && addgroup -S -g 1000 app \
