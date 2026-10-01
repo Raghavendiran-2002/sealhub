@@ -38,8 +38,8 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          # Pis use arm64; amd64 is optional for local dev. Dropping amd64 halves CI time.
-          platforms: linux/arm64
+          # Raspberry Pi only (64-bit and 32-bit armhf). No amd64/other arches.
+          platforms: linux/arm64,linux/arm/v7
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -48,5 +48,5 @@ jobs:
 
       - name: Summary
         run: |
-          echo "Pushed: ghcr.io/raghavendiran-2002/rootos:latest (and sha tag on push)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pushed: ghcr.io/raghavendiran-2002/rootos:latest (linux/arm64 + linux/arm/v7)" >> "$GITHUB_STEP_SUMMARY"
           echo "Deploy: METRICS_TOKEN=... ./hack/pi/deploy-rootos-all.sh" >> "$GITHUB_STEP_SUMMARY"
