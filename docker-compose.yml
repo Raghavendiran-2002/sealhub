@@ -1,40 +1,15 @@
 services:
-  pocket-id:
-    image: ghcr.io/pocket-id/pocket-id:v2.16.0
-    container_name: pocket-id
-    restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      APP_URL: ${APP_URL:-https://id.raghavendiran.cloud}
-      TRUST_PROXY: ${TRUST_PROXY:-true}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      DB_CONNECTION_STRING: "file:data/pocket-id.db?_journal_mode=DELETE"
-    ports:
-      - "1411:1411"
-    volumes:
-      - "./data:/app/data:Z"
-    healthcheck:
-      test: ["CMD", "/app/pocket-id", "healthcheck"]
-      interval: 1m30s
-      timeout: 5s
-      retries: 2
-      start_period: 10s
-
   rootos:
-    image: ${ROOTOS_IMAGE:-ghcr.io/raghavendiran-2002/rootos:latest}
     container_name: rootos
+    build: .
     restart: unless-stopped
     init: true
     ports:
       - "5000:5000"
-    environment:
-      METRICS_REMOTE_TOKEN: ${METRICS_TOKEN:-}
+    user: "1000:1000"
     pids_limit: 128
+    mem_limit: 32m
+    memswap_limit: 32m
     cap_drop:
       - ALL
     security_opt:
@@ -47,21 +22,25 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 60s
+      start_period: 20s
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
     volumes:
+      # App settings file (create from config.example.yml):
       - type: bind
-        source: ./starry/config.yml
+        source: ./config.yml
         target: /app/config.yml
         read_only: true
+      # Auth secrets file — generate with:
+      # docker compose run --rm rootos gen-auth
       - type: bind
-        source: ./starry/auth.yml
+        source: ./auth.yml
         target: /app/auth.yml
         read_only: true
+      # procfs: mount only files required for showing system stats
       - type: bind
         source: /proc/uptime
         target: /host/proc/uptime
@@ -82,6 +61,7 @@ services:
         source: /proc/sys/kernel/hostname
         target: /host/proc/sys/kernel/hostname
         read_only: true
+      # sysfs: mount only files required for showing system stats
       - type: bind
         source: /sys/class
         target: /host/sys/class
@@ -90,21 +70,8 @@ services:
         source: /sys/devices
         target: /host/sys/devices
         read_only: true
+      # hostname only
       - type: bind
         source: /etc/hostname
         target: /host/etc/hostname
         read_only: true
-
-  cloudflared:
-    image: docker.io/cloudflare/cloudflared:latest
-    container_name: pocket-id-cloudflared
-    restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
-    environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
-    command: tunnel --no-autoupdate run
-    depends_on:
-      pocket-id:
-        condition: service_healthy

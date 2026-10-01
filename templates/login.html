@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ cfg.title }} - Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <script>
+      (function() {
+        const saved = localStorage.getItem("theme") || "auto";
+        const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const theme = saved === "auto" ? (isDark ? "dark" : "light") : saved;
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
+    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="icon" href="/static/dragon.png" />
+  </head>
+  <body>
+    <div class="page page-auth">
+      <main class="auth-shell">
+        <section class="auth-card" aria-labelledby="loginTitle">
+          <h1 id="loginTitle" class="title">Sign in</h1>
+          {% if cfg.subtitle %}
+          <p class="subtitle">{{ cfg.subtitle }}</p>
+          {% endif %}
+          {% if error %}
+          <p class="auth-error" role="alert">{{ error }}</p>
+          {% endif %}
+          {% if password_enabled %}
+          <form method="post" class="auth-form" autocomplete="on">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input class="auth-honeypot" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+            <label class="auth-label" for="username">Username</label>
+            <input class="auth-input" id="username" name="username" type="text" required autofocus />
+
+            <label class="auth-label" for="password">Password</label>
+            <input class="auth-input" id="password" name="password" type="password" required />
+
+            <button class="auth-submit" type="submit">Continue</button>
+          </form>
+          {% endif %}
+          {% if oidc_enabled %}
+          <a class="oidc-submit" href="{{ url_for('auth.oidc_login', next=request.args.get('next', '')) }}">
+            <svg class="oidc-submit-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="10" cy="7" r="4" />
+              <path d="M20 8v6m-3-3h6" />
+            </svg>
+            <span>Continue with {{ oidc_provider_name }}</span>
+          </a>
+          {% endif %}
+        </section>
+      </main>
+    </div>
+    <script src="/static/js/ui.js"></script>
+  </body>
+</html>

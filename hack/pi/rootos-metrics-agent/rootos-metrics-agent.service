@@ -1,0 +1,31 @@
+[Unit]
+Description=RootOS metrics agent (Podman)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/rootos/agent.env
+Environment=ROOTOS_IMAGE=ghcr.io/raghavendiran-2002/rootos:latest
+Environment=ROOTOS_AGENT_LISTEN=0.0.0.0:9090
+ExecStartPre=-/usr/bin/podman rm -f rootos-metrics-agent
+ExecStartPre=/usr/bin/podman pull ${ROOTOS_IMAGE}
+ExecStart=/usr/bin/podman run --rm --name rootos-metrics-agent \
+  -p 9090:9090 \
+  -e METRICS_TOKEN \
+  -e ROOTOS_AGENT_LISTEN \
+  -v /proc/uptime:/host/proc/uptime:ro \
+  -v /proc/meminfo:/host/proc/meminfo:ro \
+  -v /proc/stat:/host/proc/stat:ro \
+  -v /proc/cpuinfo:/host/proc/cpuinfo:ro \
+  -v /proc/sys/kernel/hostname:/host/proc/sys/kernel/hostname:ro \
+  -v /sys/class:/host/sys/class:ro \
+  -v /sys/devices:/host/sys/devices:ro \
+  -v /etc/hostname:/host/etc/hostname:ro \
+  ${ROOTOS_IMAGE} agent
+ExecStop=/usr/bin/podman stop -t 10 rootos-metrics-agent
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

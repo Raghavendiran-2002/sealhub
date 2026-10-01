@@ -1,30 +1,4 @@
 services:
-  pocket-id:
-    image: ghcr.io/pocket-id/pocket-id:v2.16.0
-    container_name: pocket-id
-    restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      APP_URL: ${APP_URL:-https://id.raghavendiran.cloud}
-      TRUST_PROXY: ${TRUST_PROXY:-true}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      DB_CONNECTION_STRING: "file:data/pocket-id.db?_journal_mode=DELETE"
-    ports:
-      - "1411:1411"
-    volumes:
-      - "./data:/app/data:Z"
-    healthcheck:
-      test: ["CMD", "/app/pocket-id", "healthcheck"]
-      interval: 1m30s
-      timeout: 5s
-      retries: 2
-      start_period: 10s
-
   rootos:
     image: ${ROOTOS_IMAGE:-ghcr.io/raghavendiran-2002/rootos:latest}
     container_name: rootos
@@ -55,11 +29,11 @@ services:
         max-file: "3"
     volumes:
       - type: bind
-        source: ./starry/config.yml
+        source: ./config.yml
         target: /app/config.yml
         read_only: true
       - type: bind
-        source: ./starry/auth.yml
+        source: ./auth.yml
         target: /app/auth.yml
         read_only: true
       - type: bind
@@ -94,17 +68,3 @@ services:
         source: /etc/hostname
         target: /host/etc/hostname
         read_only: true
-
-  cloudflared:
-    image: docker.io/cloudflare/cloudflared:latest
-    container_name: pocket-id-cloudflared
-    restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
-    environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
-    command: tunnel --no-autoupdate run
-    depends_on:
-      pocket-id:
-        condition: service_healthy
