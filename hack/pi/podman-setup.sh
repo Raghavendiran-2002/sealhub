@@ -9,6 +9,7 @@ CONFIG_DIR="/etc/sealhub"
 REPO_DIR="/var/lib/sealhub/repo"
 BOOTSTRAP_TOKEN="${BOOTSTRAP_TOKEN:-pi-homelab-bootstrap-change-me}"
 DATA_REPO="${DATA_REPO:-git@github.com:Raghavendiran-2002/sealhub-data.git}"
+# HTTPS clone (e.g. https://x-access-token:TOKEN@github.com/.../sealhub-data.git) when SSH keys are not ready yet.
 
 if [[ "$(id -u)" -eq 0 ]]; then
   echo "Run as user pi, not root (use: SUDO_PASS=... bash $0)"

@@ -50,12 +50,13 @@ func main() {
 		printJSON(docs, *output)
 	case "apply":
 		if len(args) < 2 {
-			fatal("usage: hub apply <path> -f file")
+			fatal("usage: hub apply <path> [-f file] [-encrypt|-no-encrypt]")
 		}
 		path := args[1]
-		body := readApplyBody(os.Args[1:])
-		enc := document.DefaultEncryptForPath(path)
-		env, err := c.Apply(ctx, path, client.ApplyRequest{Document: body, Encrypt: &enc})
+		applyArgs := args[1:]
+		body := readApplyBody(applyArgs)
+		enc := applyEncryptFlag(path, applyArgs)
+		env, err := c.Apply(ctx, path, client.ApplyRequest{Document: body, Encrypt: enc})
 		if err != nil {
 			fatal(err)
 		}
@@ -128,7 +129,7 @@ func usage() {
 Usage:
   hub get <path>
   hub list [prefix]
-  hub apply <path> [-f file]
+  hub apply <path> [-f file] [-encrypt|-no-encrypt]
   hub delete <path>
   hub watch [prefix]
   hub auth login|logout|whoami
@@ -153,6 +154,21 @@ func resolveToken(flagTok string) string {
 	}
 	t, _ := hubauth.LoadToken()
 	return t
+}
+
+func applyEncryptFlag(path string, rest []string) *bool {
+	for i := 0; i < len(rest); i++ {
+		switch rest[i] {
+		case "-encrypt":
+			t := true
+			return &t
+		case "-no-encrypt":
+			f := false
+			return &f
+		}
+	}
+	d := document.DefaultEncryptForPath(path)
+	return &d
 }
 
 func readApplyBody(rest []string) string {

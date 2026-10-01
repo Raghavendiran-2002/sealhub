@@ -44,10 +44,17 @@ for f in config.yaml keyring jwt-secret; do
   fi
 done
 
+_cfg_tmp="$(mktemp)"
 read_host_file "$CONFIG_DIR/config.yaml" | sed \
   -e 's|keyringFile: /etc/sealhub/keyring|keyringFile: /run/secrets/keyring|g' \
   -e 's|jwtSecretFile: /etc/sealhub/jwt-secret|jwtSecretFile: /run/secrets/jwt-secret|g' \
-  >"$RUN_DIR/config.yaml"
+  >"$_cfg_tmp"
+if ! grep -q '^server:' "$_cfg_tmp"; then
+  echo "ERROR: $CONFIG_DIR/config.yaml is not valid hubd YAML (got $(wc -c <"$_cfg_tmp") bytes). Replace placeholder content with a full config — see hack/pi/podman-setup.sh or docs/RESTORE-PI-MANUAL.md" >&2
+  rm -f "$_cfg_tmp"
+  exit 1
+fi
+mv "$_cfg_tmp" "$RUN_DIR/config.yaml"
 read_host_file "$CONFIG_DIR/keyring" >"$RUN_DIR/keyring"
 read_host_file "$CONFIG_DIR/jwt-secret" >"$RUN_DIR/jwt-secret"
 

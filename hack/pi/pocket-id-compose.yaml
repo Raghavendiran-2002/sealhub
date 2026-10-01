@@ -1,7 +1,7 @@
 # Pocket ID only (Pi / homelab). cloudflared omitted — use tunnel on Mac or add separately.
 services:
   pocket-id:
-    image: ghcr.io/pocket-id/pocket-id:v2.14.0
+    image: ghcr.io/pocket-id/pocket-id:v2.16.0
     container_name: pocket-id
     restart: unless-stopped
     env_file:

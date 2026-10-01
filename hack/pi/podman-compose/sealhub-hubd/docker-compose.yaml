@@ -1,0 +1,19 @@
+# SealHub hubd on Pi. Prereq: /etc/sealhub/* and sync-run-config.sh (see hack/pi/podman-setup.sh).
+# Run: cd ~/podman-compose/sealhub-hubd && podman-compose up -d
+services:
+  hubd:
+    image: ${HUBD_IMAGE:-ghcr.io/raghavendiran-2002/sealhub/hubd:0.1-latest}
+    container_name: sealhub-hubd
+    restart: unless-stopped
+    user: "0:0"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${SEALHUB_RUN_DIR:-/home/pi/.local/share/sealhub/run}/config.yaml:/config/config.yaml:ro,z
+      - ${SEALHUB_RUN_DIR:-/home/pi/.local/share/sealhub/run}/keyring:/run/secrets/keyring:ro,z
+      - ${SEALHUB_RUN_DIR:-/home/pi/.local/share/sealhub/run}/jwt-secret:/run/secrets/jwt-secret:ro,z
+      - ${SEALHUB_REPO_DIR:-/var/lib/sealhub/repo}:/var/lib/sealhub/repo:Z
+      - ${PI_SSH_DIR:-/home/pi/.ssh}:/root/.ssh:ro,z
+    environment:
+      HOME: /root
+      GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=accept-new

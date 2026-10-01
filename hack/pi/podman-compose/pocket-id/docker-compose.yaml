@@ -1,0 +1,108 @@
+services:
+  pocket-id:
+    image: ghcr.io/pocket-id/pocket-id:v2.16.0
+    container_name: pocket-id
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_URL: ${APP_URL:-https://id.raghavendiran.cloud}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      DB_CONNECTION_STRING: "file:data/pocket-id.db?_journal_mode=DELETE"
+    ports:
+      - "1411:1411"
+    volumes:
+      - "./data:/app/data:Z"
+    healthcheck:
+      test: ["CMD", "/app/pocket-id", "healthcheck"]
+      interval: 1m30s
+      timeout: 5s
+      retries: 2
+      start_period: 10s
+
+  starry-cloud:
+    image: ${STARRY_CLOUD_IMAGE:-starry-cloud:local}
+    container_name: starry-cloud
+    restart: unless-stopped
+    init: true
+    ports:
+      - "5000:5000"
+    pids_limit: 128
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:5000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    volumes:
+      - type: bind
+        source: ./starry/config.yml
+        target: /app/config.yml
+        read_only: true
+      - type: bind
+        source: ./starry/auth.yml
+        target: /app/auth.yml
+        read_only: true
+      - type: bind
+        source: /proc/uptime
+        target: /host/proc/uptime
+        read_only: true
+      - type: bind
+        source: /proc/meminfo
+        target: /host/proc/meminfo
+        read_only: true
+      - type: bind
+        source: /proc/stat
+        target: /host/proc/stat
+        read_only: true
+      - type: bind
+        source: /proc/cpuinfo
+        target: /host/proc/cpuinfo
+        read_only: true
+      - type: bind
+        source: /proc/sys/kernel/hostname
+        target: /host/proc/sys/kernel/hostname
+        read_only: true
+      - type: bind
+        source: /sys/class
+        target: /host/sys/class
+        read_only: true
+      - type: bind
+        source: /sys/devices
+        target: /host/sys/devices
+        read_only: true
+      - type: bind
+        source: /etc/hostname
+        target: /host/etc/hostname
+        read_only: true
+
+  cloudflared:
+    image: docker.io/cloudflare/cloudflared:latest
+    container_name: pocket-id-cloudflared
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run
+    depends_on:
+      pocket-id:
+        condition: service_healthy

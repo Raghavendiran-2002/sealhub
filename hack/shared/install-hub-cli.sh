@@ -58,4 +58,5 @@ elif [[ -f "${HOME}/.zshrc" ]]; then
 fi
 
 echo "Installed ${BIN_DIR}/hub"
-echo "Open a new shell or: source ${ENV_FILE}"
+echo "Current shell:  source ~/.bashrc   (or open a new SSH session)"
+echo "Env:            source ${ENV_FILE}"

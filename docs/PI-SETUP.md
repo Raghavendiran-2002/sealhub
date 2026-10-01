@@ -160,8 +160,28 @@ export SEALHUB_SERVER="http://live:8080"
 | Create/update | `hub apply secrets/homelab/my.yaml -f ./my.yaml` |
 | Delete | `hub delete secrets/homelab/my.yaml` |
 | Watch | `hub watch secrets/homelab` |
-| Pocket ID backup | `hub pocket backup` → `pocket/homelab/pocket-id.db.yaml` + `secrets/homelab/pocket-id.env` |
+| Pocket ID backup | `hub pocket backup` → `pocket/homelab/pocket-id.db.yaml` + `secrets/homelab/pocket-id.env`; from **live** Pi: `hack/local/backup-pocket-id-from-live.sh` (also `live/pocket-id/db`, `live/pocket-id/data/**` — DB WAL/SHM + `uploads/{application-images,oidc-client-images,profile-pictures}`, `live/cloudflare/token.txt`) |
 | Pocket ID restore | On Pi: `POCKET_ID_HOME=~/pocket-id hub pocket restore -no-stop` (see `hack/pi/`) |
+| Pi SSH + Tailscale backup | `hack/pi/store-pi-ssh-tailscale.sh` → `live/ssh/id_ed25519`, `live/ssh/id_ed25519.pub`, `live/tailscale/config` |
+| Pocket ID + Cloudflare (Mac) | `hack/local/store-pocket-live.sh` → `live/cloudflare/token.txt` (`TUNNEL_TOKEN`), `live/pocket-id/encryption.key`, `live/pocket-id/db` |
+| Pi podman-compose (git) | `hack/local/store-podman-compose-live.sh` → `live/podman-compose/` (Pocket ID + cloudflared, sealhub-hubd) |
+| Starry Cloud dashboard | Same stack as Pocket ID: `live/podman-compose/pocket-id/docker-compose.yaml` → run from `~/pocket-id` (`starry-cloud` + `pocket-id` + `cloudflared`); `pocket-id/starry/config.yml` + `live/starry-cloud/auth.yml` |
+
+### Backup Pi `~/.ssh` and Tailscale config into SealHub
+
+On **`live`**, with `hub` and `~/.config/sealhub/env`:
+
+```bash
+source ~/.config/sealhub/env
+# Optional: create /etc/tailscale/config.json first, or:
+export TAILSCALE_AUTHKEY='tskey-auth-...'   # do not commit; rotate if leaked
+chmod +x ~/sealhub/hack/pi/store-pi-ssh-tailscale.sh
+~/sealhub/hack/pi/store-pi-ssh-tailscale.sh
+```
+
+**Manual restore on a new Pi:** [RESTORE-PI-MANUAL.md](RESTORE-PI-MANUAL.md) (hubd + `hub get live/...` from sealhub-data).
+
+Restore locally: `hub get live/ssh/id_ed25519`, `hub get live/tailscale/config` (private key encrypted at rest).
 
 API paths are **without** the `data/` prefix (Git stores under `data/config/...`, `data/secrets/...`, `data/pocket/...`).
 

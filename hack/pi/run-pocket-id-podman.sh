@@ -3,7 +3,7 @@
 # Upstream image: amd64/arm64 only — not armv7.
 set -euo pipefail
 
-POCKET_ID_IMAGE="${POCKET_ID_IMAGE:-ghcr.io/pocket-id/pocket-id:v2.14.0}"
+POCKET_ID_IMAGE="${POCKET_ID_IMAGE:-ghcr.io/pocket-id/pocket-id:v2.16.0}"
 
 if [[ "$(uname -m)" == "armv7l" ]]; then
   echo "Pocket ID upstream image has no linux/arm/v7 build; use arm64 Pi OS or run Pocket ID elsewhere." >&2
