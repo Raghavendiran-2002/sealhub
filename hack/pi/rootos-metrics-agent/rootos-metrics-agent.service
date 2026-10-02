@@ -4,13 +4,13 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=simple
+Type=forking
 EnvironmentFile=-/etc/rootos/agent.env
 Environment=ROOTOS_IMAGE=ghcr.io/raghavendiran-2002/rootos:latest
 Environment=ROOTOS_AGENT_LISTEN=0.0.0.0:9090
 ExecStartPre=-/usr/bin/podman rm -f rootos-metrics-agent
 ExecStartPre=/usr/bin/podman pull ${ROOTOS_IMAGE}
-ExecStart=/usr/bin/podman run --rm --name rootos-metrics-agent \
+ExecStart=/usr/bin/podman run -d --replace --name rootos-metrics-agent \
   -p 9090:9090 \
   -e METRICS_TOKEN \
   -e ROOTOS_AGENT_LISTEN \
@@ -24,8 +24,8 @@ ExecStart=/usr/bin/podman run --rm --name rootos-metrics-agent \
   -v /etc/hostname:/host/etc/hostname:ro \
   ${ROOTOS_IMAGE} agent
 ExecStop=/usr/bin/podman stop -t 10 rootos-metrics-agent
-Restart=always
-RestartSec=5
+Restart=on-failure
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target

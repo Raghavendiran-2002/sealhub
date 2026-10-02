@@ -32,6 +32,7 @@ if "${SSH[@]}" "test -d ${POCKET_DIR}"; then
   "${SCP[@]}" "$ROOT/hack/pi/podman-compose/pocket-id/docker-compose.yaml" \
     "${LIVE_USER}@${LIVE_HOST}:${POCKET_DIR}/docker-compose.yaml"
   "${SSH[@]}" "cd ${POCKET_DIR} && export ROOTOS_IMAGE='${ROOTOS_IMAGE}' METRICS_TOKEN='${METRICS_TOKEN:-}' && \
+    podman stop starry-cloud 2>/dev/null || true; podman rm -f starry-cloud 2>/dev/null || true; \
     podman compose up -d --force-recreate rootos"
 else
   echo "==> Standalone stack at ${STANDALONE_DIR}" >&2
