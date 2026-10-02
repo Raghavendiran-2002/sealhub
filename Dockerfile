@@ -7,8 +7,8 @@ ARG TARGETPLATFORM
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       $(case "$TARGETPLATFORM" in \
-        "linux/arm64") echo "gcc-aarch64-linux-gnu" ;; \
-        "linux/arm/v7") echo "gcc-arm-linux-gnueabihf" ;; \
+        "linux/arm64") echo "crossbuild-essential-arm64" ;; \
+        "linux/arm/v7") echo "crossbuild-essential-armhf" ;; \
         *) echo "UNSUPPORTED" ;; \
       esac) \
     && rm -rf /var/lib/apt/lists/* \
@@ -31,11 +31,17 @@ RUN case "$TARGETPLATFORM" in \
       "linux/arm64") \
         rustup target add aarch64-unknown-linux-gnu \
         && export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+        && export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+        && export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar \
+        && export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C linker=aarch64-linux-gnu-gcc" \
         && cargo build --locked --release --target aarch64-unknown-linux-gnu \
         && mv target/aarch64-unknown-linux-gnu/release/rootos /rootos ;; \
       "linux/arm/v7") \
         rustup target add armv7-unknown-linux-gnueabihf \
         && export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc \
+        && export CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
+        && export AR_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar \
+        && export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUSTFLAGS="-C linker=arm-linux-gnueabihf-gcc" \
         && cargo build --locked --release --target armv7-unknown-linux-gnueabihf \
         && mv target/armv7-unknown-linux-gnueabihf/release/rootos /rootos ;; \
     esac
