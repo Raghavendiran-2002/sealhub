@@ -31,6 +31,11 @@ if "${SSH[@]}" "test -d ${POCKET_DIR}"; then
   fi
   "${SCP[@]}" "$ROOT/hack/pi/podman-compose/pocket-id/docker-compose.yaml" \
     "${LIVE_USER}@${LIVE_HOST}:${POCKET_DIR}/docker-compose.yaml"
+  if [[ -n "${METRICS_TOKEN:-}" ]]; then
+    "${SSH[@]}" "grep -q '^METRICS_TOKEN=' ${POCKET_DIR}/.env 2>/dev/null && \
+      sed -i 's|^METRICS_TOKEN=.*|METRICS_TOKEN=${METRICS_TOKEN}|' ${POCKET_DIR}/.env || \
+      echo 'METRICS_TOKEN=${METRICS_TOKEN}' >> ${POCKET_DIR}/.env"
+  fi
   "${SSH[@]}" "cd ${POCKET_DIR} && export ROOTOS_IMAGE='${ROOTOS_IMAGE}' METRICS_TOKEN='${METRICS_TOKEN:-}' && \
     podman stop starry-cloud 2>/dev/null || true; podman rm -f starry-cloud 2>/dev/null || true; \
     podman compose up -d --force-recreate rootos"

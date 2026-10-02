@@ -1,5 +1,7 @@
 # RootOS metrics sharing (example)
 
+Full setup → deployment: **[ROOTOS-DEPLOY.md](ROOTOS-DEPLOY.md)**
+
 Two Pis: **dashboard** on `100.114.97.68`, **metrics agent** on `100.66.190.37`.
 
 ## 1. Shared secret (same on both sides)
@@ -66,3 +68,23 @@ export METRICS_TOKEN='your-secret'
 ```
 
 After login, the UI calls **`/api/system-stats/all`**; the server fetches the remote agent with the bearer token (not the browser).
+
+## OIDC (Pocket ID) over HTTP
+
+Register the **callback** URL (not `/login`):
+
+```text
+http://100.114.97.68:5000/login/oidc/callback
+```
+
+If you use the public hostname instead:
+
+```text
+https://home.raghavendiran.cloud/login/oidc/callback
+```
+
+In `auth.yml` on the dashboard Pi:
+
+- **`secure_cookie: false`** when you open the dashboard over plain `http://…` (Tailscale IP). With `secure_cookie: true`, the browser drops the session cookie and you loop back to login after OIDC.
+- **`secure_cookie: true`** only when the dashboard is always served over HTTPS (e.g. behind cloudflared).
+- **`trusted_proxy_hops: 1`** when behind cloudflared; use **`0`** for direct `http://IP:5000`.
