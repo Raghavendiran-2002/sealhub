@@ -32,11 +32,11 @@ apply_file() {
   hub apply "$api_path" -f "$src" $extra
 }
 
-apply_file "live/ssh/id_ed25519" "${SSH_DIR}/id_ed25519" "-encrypt"
-apply_file "live/ssh/id_ed25519.pub" "${SSH_DIR}/id_ed25519.pub" ""
+apply_file "live/_host/key/id_ed25519" "${SSH_DIR}/id_ed25519" "-encrypt"
+apply_file "live/_host/config/id_ed25519.pub" "${SSH_DIR}/id_ed25519.pub" ""
 
 if [[ -f "$TS_CONFIG" ]]; then
-  apply_file "live/tailscale/config" "$TS_CONFIG" "-encrypt"
+  apply_file "live/_host/secrets/tailscale-config" "$TS_CONFIG" "-encrypt"
 elif [[ -n "${TAILSCALE_AUTHKEY:-}" ]]; then
   tmp="$(mktemp)"
   trap 'rm -f "$tmp"' EXIT
@@ -48,9 +48,9 @@ elif [[ -n "${TAILSCALE_AUTHKEY:-}" ]]; then
   "acceptRoutes": true
 }
 EOF
-  apply_file "live/tailscale/config" "$tmp" "-encrypt"
+  apply_file "live/_host/secrets/tailscale-config" "$tmp" "-encrypt"
 else
   echo "No $TS_CONFIG and TAILSCALE_AUTHKEY unset — skipping tailscale config" >&2
 fi
 
-echo "Done. Git paths: data/live/ssh/id_ed25519, data/live/ssh/id_ed25519.pub, data/live/tailscale/config"
+echo "Done. Git paths: data/live/_host/{key,config,secrets}/"

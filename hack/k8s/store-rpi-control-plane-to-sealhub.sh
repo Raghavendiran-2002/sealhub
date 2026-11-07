@@ -54,10 +54,16 @@ apply_one() {
   local api="rpi-control-plane/${rel}"
   local extra="-no-encrypt"
   case "$rel" in
-    */secrets/*|_cluster/credentials/*)
+    */secrets/sealedsecrets.yaml)
+      extra="-no-encrypt"
+      ;;
+    */secrets/secrets.yaml|_cluster/credentials/*)
       extra="-encrypt"
       ;;
     _cluster/oidc/kubernetes-oidc.yaml|_cluster/oidc/kubeconfig-oidc.yaml)
+      extra="-encrypt"
+      ;;
+    */secrets/*)
       extra="-encrypt"
       ;;
   esac

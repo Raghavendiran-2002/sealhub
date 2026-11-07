@@ -22,13 +22,13 @@ echo "==> live/ssh (+ tailscale if present)" >&2
 POCKET_DIR="${POCKET_ID_HOME:-$HOME/pocket-id}"
 if [[ -f "${POCKET_DIR}/starry/config.yml" ]]; then
   echo "==> RootOS dashboard config" >&2
-  hub apply live/starry-cloud/config.yml -f "${POCKET_DIR}/starry/config.yml" -no-encrypt
+  hub apply live/rootos/config/config.yml -f "${POCKET_DIR}/starry/config.yml" -no-encrypt
 fi
 if [[ -f "${POCKET_DIR}/starry/auth.yml" ]]; then
-  hub apply live/starry-cloud/auth.yml -f "${POCKET_DIR}/starry/auth.yml" -encrypt
+  hub apply live/rootos/secrets/auth.yml -f "${POCKET_DIR}/starry/auth.yml" -encrypt
 fi
 if [[ -f "${POCKET_DIR}/docker-compose.yaml" ]]; then
-  hub apply live/podman-compose/pocket-id/docker-compose.yaml -f "${POCKET_DIR}/docker-compose.yaml" -no-encrypt
+  hub apply live/pocket-id/config/docker-compose.yaml -f "${POCKET_DIR}/docker-compose.yaml" -no-encrypt
 fi
 
 echo "Live snapshot complete (hubd → sealhub-data git)." >&2

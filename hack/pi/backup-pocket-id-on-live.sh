@@ -106,9 +106,7 @@ if $needs_stage || [[ "$POCKET_WAS_RUNNING" == "true" ]]; then
   BACKUP_HOME="$STAGE"
 fi
 
-echo "Pocket ID backup (pocket/ + secrets/homelab/)..." >&2
-# Stop/start is handled above; staged dir has no compose file for hub's compose stop.
-hub pocket backup -dir "$BACKUP_HOME" -no-stop
+echo "Pocket ID backup → live/pocket-id/..." >&2
 
 # shellcheck disable=SC1090
 set -a
@@ -117,9 +115,9 @@ set +a
 
 tmp="$(mktemp)"
 
-hub apply live/pocket-id/encryption.key -f <(printf '%s\n' "$ENCRYPTION_KEY") -encrypt >/dev/null
+hub apply live/pocket-id/key/encryption.key -f <(printf '%s\n' "$ENCRYPTION_KEY") -encrypt >/dev/null
 DB_APPLY="${BACKUP_HOME}/data/pocket-id.db"
-hub apply live/pocket-id/db -f "$DB_APPLY" -encrypt >/dev/null
+hub apply live/pocket-id/db/pocket-id.db -f "$DB_APPLY" -encrypt >/dev/null
 
 echo "Pocket ID data tree → live/pocket-id/data/..." >&2
 while IFS= read -r f; do
@@ -128,10 +126,14 @@ while IFS= read -r f; do
   api="live/pocket-id/data/${rel}"
   echo "  apply $api" >&2
   hub apply "$api" -f "$f" -encrypt >/dev/null
-done < <(find "${BACKUP_HOME}/data" -type f ! -name '.DS_Store' | sort)
+done < <(find "${BACKUP_HOME}/data" -type f ! -name '.DS_Store' ! -name 'pocket-id.db' ! -name 'pocket-id.db-*' | sort)
 
 if [[ -n "${TUNNEL_TOKEN:-}" ]]; then
-  hub apply live/cloudflare/token.txt -f <(printf '%s\n' "$TUNNEL_TOKEN") -encrypt >/dev/null
+  hub apply live/cloudflare/secrets/token.txt -f <(printf '%s\n' "$TUNNEL_TOKEN") -encrypt >/dev/null
 fi
 
-echo "Done — pocket/homelab/*, secrets/homelab/pocket-id.env, live/pocket-id/* (db, data/**, encryption.key), live/cloudflare/token.txt"
+if [[ -f "${BACKUP_HOME}/.env" ]]; then
+  hub apply live/pocket-id/env/pocket-id.env -f "${BACKUP_HOME}/.env" -encrypt >/dev/null
+fi
+
+echo "Done — live/pocket-id/{env,db,key,data}, live/cloudflare/secrets/token.txt"
