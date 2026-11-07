@@ -134,13 +134,11 @@ if [[ "$ready" -ne 1 ]]; then
   exit 1
 fi
 
-echo "--- sample config (data/config/homelab/settings.yaml) ---"
-curl -sf -H "Authorization: Bearer ${BOOTSTRAP_TOKEN}" \
-  "http://127.0.0.1:8080/api/v1/documents/config/homelab/settings.yaml"
-echo
-echo "--- sample secret (data/secrets/homelab/sample.yaml) ---"
-curl -sf -H "Authorization: Bearer ${BOOTSTRAP_TOKEN}" \
-  "http://127.0.0.1:8080/api/v1/documents/secrets/homelab/sample.yaml"
-echo
+if curl -sf -H "Authorization: Bearer ${BOOTSTRAP_TOKEN}" \
+  "http://127.0.0.1:8080/api/v1/documents/live/" >/dev/null 2>&1; then
+  echo "hub API (live/) reachable"
+else
+  echo "WARN: hub list live/ failed — hubd is up but git/API may need sync"
+fi
 echo "OK — SealHub: http://${PI_IP}:8080"
 echo "Bootstrap token: ${BOOTSTRAP_TOKEN}"
