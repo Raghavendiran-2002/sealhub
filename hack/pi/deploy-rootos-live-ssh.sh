@@ -3,8 +3,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-LIVE_HOST="${LIVE_HOST:-100.114.97.68}"
-LIVE_USER="${LIVE_USER:-pi}"
+# shellcheck source=homelab-env.sh
+source "$ROOT/hack/pi/homelab-env.sh"
 POCKET_DIR="${POCKET_DIR:-/home/pi/pocket-id}"
 STANDALONE_DIR="${ROOTOS_STANDALONE_DIR:-/home/pi/starry-cloud}"
 ROOTOS_IMAGE="${ROOTOS_IMAGE:-ghcr.io/raghavendiran-2002/rootos:latest}"

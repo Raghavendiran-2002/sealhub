@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Pull the same RootOS GHCR image on both Pis: agent (100.66.190.37) + dashboard (100.114.97.68).
+# Pull the same RootOS GHCR image on both Pis: agent (control) + dashboard (live).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=homelab-env.sh
+source "$ROOT/hack/pi/homelab-env.sh"
 ROOTOS_IMAGE="${ROOTOS_IMAGE:-ghcr.io/raghavendiran-2002/rootos:latest}"
-REMOTE_HOST="${REMOTE_HOST:-100.66.190.37}"
-LIVE_HOST="${LIVE_HOST:-100.114.97.68}"
 
 [[ -n "${METRICS_TOKEN:-}" ]] || {
   echo "Set METRICS_TOKEN (agent METRICS_TOKEN + dashboard METRICS_REMOTE_TOKEN)" >&2

@@ -3,8 +3,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-REMOTE_HOST="${REMOTE_HOST:-100.66.190.37}"
-REMOTE_USER="${REMOTE_USER:-pi}"
+# shellcheck source=homelab-env.sh
+source "$ROOT/hack/pi/homelab-env.sh"
 ROOTOS_IMAGE="${ROOTOS_IMAGE:-ghcr.io/raghavendiran-2002/rootos:latest}"
 
 [[ -n "${METRICS_TOKEN:-}" ]] || {

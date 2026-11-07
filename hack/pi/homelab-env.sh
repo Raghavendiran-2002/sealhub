@@ -1,0 +1,9 @@
+# Homelab Tailscale IPs and SealHub defaults (source from deploy/backup scripts).
+# shellcheck shell=bash
+LIVE_HOST="${LIVE_HOST:-100.114.97.68}"
+CONTROL_HOST="${CONTROL_HOST:-100.97.65.127}"
+REMOTE_HOST="${REMOTE_HOST:-$CONTROL_HOST}"
+LIVE_USER="${LIVE_USER:-pi}"
+REMOTE_USER="${REMOTE_USER:-pi}"
+SEALHUB_SERVER_LIVE="${SEALHUB_SERVER_LIVE:-http://${LIVE_HOST}:8080}"
+SEALHUB_SERVER_LOCAL="${SEALHUB_SERVER:-http://127.0.0.1:8080}"

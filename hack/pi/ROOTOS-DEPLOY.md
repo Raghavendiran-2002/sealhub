@@ -5,7 +5,7 @@ End-to-end runbook for **RootOS** on two Raspberry Pis over Tailscale:
 | Host | Tailscale IP | Role |
 |------|----------------|------|
 | **Live** | `100.114.97.68` | Dashboard (`rootos serve`, port **5000**), Pocket ID stack |
-| **Control** | `100.66.190.37` | Metrics agent only (`rootos agent`, port **9090**) |
+| **Control** | `100.97.65.127` | Metrics agent only (`rootos agent`, port **9090**) |
 
 Image: **`ghcr.io/raghavendiran-2002/rootos:latest`** (multi-arch: `linux/arm64`, `linux/arm/v7`).
 
@@ -39,7 +39,7 @@ Browser ──► Live Pi :5000 (RootOS dashboard)
 - **Podman** and **podman compose** (existing Pocket ID stack under `~/pocket-id`).
 - **`~/pocket-id/starry/auth.yml`** with Pocket ID OIDC already configured (from prior Starry Cloud / RootOS setup).
 
-### Control Pi (`100.66.190.37`)
+### Control Pi (`100.97.65.127`)
 
 - **Podman** (install if missing):
 
@@ -149,7 +149,7 @@ metrics_hosts:
     local: true
   - id: control
     label: Control plane
-    url: "http://100.66.190.37:9090"
+    url: "http://100.97.65.127:9090"
 
 services:
   # ... your service cards ...
@@ -264,7 +264,7 @@ chmod +x hack/pi/deploy-rootos-*.sh
 export METRICS_TOKEN='your-shared-secret'
 export ROOTOS_IMAGE='ghcr.io/raghavendiran-2002/rootos:latest'
 export LIVE_HOST='100.114.97.68'
-export REMOTE_HOST='100.66.190.37'
+export REMOTE_HOST='100.97.65.127'
 
 ./hack/pi/deploy-rootos-all.sh
 ```
@@ -312,7 +312,7 @@ podman ps --filter name=rootos
 ```bash
 TOKEN=$(grep ^METRICS_TOKEN= ~/pocket-id/.env | cut -d= -f2-)
 curl -sf -H "Authorization: Bearer $TOKEN" \
-  http://100.66.190.37:9090/api/system-stats | jq .hostname,.memory.percent
+  http://100.97.65.127:9090/api/system-stats | jq .hostname,.memory.percent
 ```
 
 ### UI
@@ -331,7 +331,7 @@ curl -sf -H "Authorization: Bearer $TOKEN" \
 | OIDC “invalid redirect” at IdP | Wrong callback URL | Use **`/login/oidc/callback`**, not `/login` |
 | Agent: connection refused on :9090 | Systemd using foreground `podman run --rm` or port conflict | Use **`-d`** unit from repo; `sudo systemctl restart rootos-metrics-agent` |
 | `podman: command not found` on control Pi | Podman not installed | `apt install podman` |
-| Live metrics OK, remote `--` | Tailscale/firewall or wrong URL in `metrics_hosts` | Check `url: http://100.66.190.37:9090` from live Pi with curl + token |
+| Live metrics OK, remote `--` | Tailscale/firewall or wrong URL in `metrics_hosts` | Check `url: http://100.97.65.127:9090` from live Pi with curl + token |
 | Port 5000 bind error | **`starry-cloud`** still running | `podman stop starry-cloud; podman rm starry-cloud`, then recreate **`rootos`** |
 
 ---
@@ -350,6 +350,18 @@ curl -sf -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-## 11. Related SealHub (`main` branch)
+## 11. SealHub backups (live + K8s)
+
+| Script | Where | Purpose |
+|--------|--------|---------|
+| [`backup-live-snapshot.sh`](backup-live-snapshot.sh) | **live** Pi | Pocket ID DB, `live/ssh`, RootOS `starry-cloud` + compose → **sealhub-data** |
+| [`hack/k8s/collect-rpi-control-plane-on-pi.sh`](../k8s/collect-rpi-control-plane-on-pi.sh) | **control plane** | Refresh `/data/rpi-control-plane` + OIDC bundle |
+| [`hack/k8s/store-rpi-control-plane-to-sealhub.sh`](../k8s/store-rpi-control-plane-to-sealhub.sh) | **Mac** (hub CLI) | `RPI_DATA=/tmp/...` or SSH collect → `data/rpi-control-plane/` |
+
+Defaults: [`homelab-env.sh`](homelab-env.sh) (`LIVE_HOST`, `CONTROL_HOST`, hub URL).
+
+---
+
+## 12. Related SealHub (`main` branch)
 
 The **`main`** branch is **SealHub** (`hubd`, config in GitHub). It previously documented Starry Cloud under `~/pocket-id` and backup paths like `live/starry-cloud/` in **sealhub-data**. RootOS on **`rootos`** replaces the dashboard image and naming; you can back up live files with `hub apply live/rootos/...` if you use SealHub on the live Pi.
