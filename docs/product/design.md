@@ -1,5 +1,9 @@
 # SealHub design
 
+Parent: [README.md](README.md).
+
+**Homelab path layout (authoritative):** [sealhub-data docs/layout.md](https://github.com/Raghavendiran-2002/sealhub-data/blob/main/docs/layout.md). The section below includes legacy path examples.
+
 ## Document paths
 
 - API paths are relative to namespace `data` (default).

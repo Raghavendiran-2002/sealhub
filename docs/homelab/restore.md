@@ -1,5 +1,7 @@
 # Manual Pi setup + restore from sealhub-data (CLI)
 
+Parent: [README.md](README.md).
+
 Use this when bringing up a **new** Pi (e.g. `192.168.1.14`, hostname `live`) and restoring **`data/live/...`** and homelab docs from **sealhub-data** via **hub** / **hubd**.
 
 ## Prerequisites

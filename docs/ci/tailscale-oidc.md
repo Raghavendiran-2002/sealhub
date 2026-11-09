@@ -1,6 +1,8 @@
 # Tailscale WIF for SealHub deploy (GitHub Actions)
 
-Same model as homelab `docs/agents/tailscale-oidc-ci.md`: GitHub OIDC → **Trust credential** → ephemeral node `tag:ci` → Tailscale SSH to `tag:homelab`.
+Parent: [README.md](README.md).
+
+GitHub OIDC → Tailscale **Trust credential** → ephemeral node `tag:ci` → Tailscale SSH to the Pi.
 
 ## Before first deploy — Tailscale Trust credential (SealHub)
 

@@ -50,7 +50,7 @@ read_host_file "$CONFIG_DIR/config.yaml" | sed \
   -e 's|jwtSecretFile: /etc/sealhub/jwt-secret|jwtSecretFile: /run/secrets/jwt-secret|g' \
   >"$_cfg_tmp"
 if ! grep -q '^server:' "$_cfg_tmp"; then
-  echo "ERROR: $CONFIG_DIR/config.yaml is not valid hubd YAML (got $(wc -c <"$_cfg_tmp") bytes). Replace placeholder content with a full config — see hack/pi/podman-setup.sh or docs/RESTORE-PI-MANUAL.md" >&2
+  echo "ERROR: $CONFIG_DIR/config.yaml is not valid hubd YAML (got $(wc -c <"$_cfg_tmp") bytes). Replace placeholder content with a full config — see hack/pi/podman-setup.sh or docs/homelab/restore.md" >&2
   rm -f "$_cfg_tmp"
   exit 1
 fi

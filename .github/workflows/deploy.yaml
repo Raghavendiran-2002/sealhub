@@ -1,7 +1,7 @@
 name: SealHub Deploy Pi
 
 # Tailscale WIF: environment tailscale → Trust credential Subject must include environment:tailscale
-# See docs/TAILSCALE-OIDC-CI.md (Subject example:
+# See docs/ci/tailscale-oidc.md (Subject example:
 #   repo:Raghavendiran-2002@70228368/sealhub@1382946894:environment:tailscale)
 
 on:

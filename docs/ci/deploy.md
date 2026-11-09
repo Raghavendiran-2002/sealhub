@@ -1,6 +1,8 @@
 # SealHub CI deploy to Pi (Tailscale SSH)
 
-Workflow: [.github/workflows/deploy.yaml](../.github/workflows/deploy.yaml)
+Parent: [README.md](README.md).
+
+Workflow: [.github/workflows/deploy.yaml](../../.github/workflows/deploy.yaml)
 
 ## Flow
 
@@ -9,7 +11,7 @@ Workflow: [.github/workflows/deploy.yaml](../.github/workflows/deploy.yaml)
 
 ## GitHub environment `tailscale`
 
-Full WIF checklist: **[TAILSCALE-OIDC-CI.md](TAILSCALE-OIDC-CI.md)** (mirrors homelab `tailscale-oidc-ci.md`).
+Full WIF checklist: **[tailscale-oidc.md](tailscale-oidc.md)**.
 
 | Secret | Source |
 |--------|--------|

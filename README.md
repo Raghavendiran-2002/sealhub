@@ -2,12 +2,14 @@
 
 Lightweight Git-backed secrets and configuration hub: **hubd** (API), **hub** (CLI), and a Kubernetes **HubPull** operator.
 
+**Coding agents:** [AGENTS.md](AGENTS.md) · Docs hub: [docs/README.md](docs/README.md)
+
 - Documents stored in GitHub with envelope encryption
 - OIDC (CLI) + service tokens
 - SSE change stream for watches
 - Multi-arch container images (amd64, arm64, arm/v7)
 
-See [docs/DESIGN.md](docs/DESIGN.md). **Raspberry Pi:** [docs/PI-SETUP.md](docs/PI-SETUP.md). **Restore Pi from sealhub-data:** [docs/RESTORE-PI-MANUAL.md](docs/RESTORE-PI-MANUAL.md). **Local CLI → Pi:** [docs/LOCAL-CLI.md](docs/LOCAL-CLI.md). **CI deploy:** [docs/DEPLOY-CI.md](docs/DEPLOY-CI.md).
+**Overview:** [docs/overview.md](docs/overview.md). **Pi hubd:** [docs/homelab/pi-setup.md](docs/homelab/pi-setup.md) · **Restore:** [docs/homelab/restore.md](docs/homelab/restore.md) · **Local CLI:** [docs/dev/local-cli.md](docs/dev/local-cli.md) · **Design:** [docs/product/design.md](docs/product/design.md) · **CI:** [docs/ci/deploy.md](docs/ci/deploy.md).
 
 ## Build
 

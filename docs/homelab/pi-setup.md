@@ -1,8 +1,10 @@
 # SealHub on Raspberry Pi (hubd + CLI)
 
+Parent: [README.md](README.md).
+
 Runbook for **hubd** on a Pi (e.g. **`live`**) with **Podman**, **GHCR** images, and the **`hub`** CLI. Data lives in GitHub repo **[sealhub-data](https://github.com/Raghavendiran-2002/sealhub-data)**.
 
-For GitHub Actions deploy over Tailscale, see **[DEPLOY-CI.md](DEPLOY-CI.md)** and **[TAILSCALE-OIDC-CI.md](TAILSCALE-OIDC-CI.md)**.
+For GitHub Actions deploy over Tailscale, see **[ci/deploy.md](../ci/deploy.md)** and **[ci/tailscale-oidc.md](../ci/tailscale-oidc.md)**.
 
 ---
 
@@ -179,7 +181,7 @@ chmod +x ~/sealhub/hack/pi/store-pi-ssh-tailscale.sh
 ~/sealhub/hack/pi/store-pi-ssh-tailscale.sh
 ```
 
-**Manual restore on a new Pi:** [RESTORE-PI-MANUAL.md](RESTORE-PI-MANUAL.md) (hubd + `hub get live/...` from sealhub-data).
+**Manual restore on a new Pi:** [restore.md](restore.md) (hubd + `hub get live/...` from sealhub-data).
 
 Restore locally: `hub get live/ssh/id_ed25519`, `hub get live/tailscale/config` (private key encrypted at rest).
 
@@ -270,7 +272,7 @@ Edit on host, then redeploy or restart so **`run/`** copies refresh:
 
 Secrets: **`TS_OAUTH_CLIENT_ID`**, **`TS_AUDIENCE`**, optional **`PI_SUDO_PASS`**, **`GHCR_READ_TOKEN`**.
 
-Details: **[DEPLOY-CI.md](DEPLOY-CI.md)**.
+Details: **[../ci/deploy.md](../ci/deploy.md)**.
 
 ---
 

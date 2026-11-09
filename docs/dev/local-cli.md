@@ -1,5 +1,7 @@
 # Local `hub` CLI (Mac / Linux dev machine)
 
+Parent: [README.md](README.md).
+
 Talk to hubd on the Pi over Tailscale or LAN.
 
 ## One-time setup
@@ -82,4 +84,4 @@ hub -server http://100.72.63.104:8080 -token "$SEALHUB_TOKEN" get config/homelab
 
 ## Related
 
-- Pi hubd setup: [PI-SETUP.md](PI-SETUP.md)
+- Pi hubd setup: [homelab/pi-setup.md](../homelab/pi-setup.md)
