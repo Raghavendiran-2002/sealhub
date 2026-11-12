@@ -15,7 +15,12 @@ DEFAULT_DATA="${SEALHUB_DATA_ROOT:-$ROOT/../sealhub-data}"
 BACKUP_ROOT="${DEVICE_BACKUP_ROOT:-$DEFAULT_DATA/device-live}"
 SNAP_ID="${1:-}"
 
-DEVICE_SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=60)
+DEVICE_SSH_OPTS=(
+  -o StrictHostKeyChecking=accept-new
+  -o ConnectTimeout=60
+  -o ServerAliveInterval=30
+  -o ServerAliveCountMax=10
+)
 DEVICE_SSH_USER="$LIVE_USER"
 DEVICE_SSH_HOST="$LIVE_HOST"
 # shellcheck source=lib/device-ssh.sh

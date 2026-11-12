@@ -19,7 +19,12 @@ STAMP="$(date -u +%Y-%m-%dT%H%M%SZ)"
 SNAP_ID="$STAMP"
 GIT_COMMIT="${DEVICE_BACKUP_GIT_COMMIT:-1}"
 
-DEVICE_SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=60)
+DEVICE_SSH_OPTS=(
+  -o StrictHostKeyChecking=accept-new
+  -o ConnectTimeout=60
+  -o ServerAliveInterval=30
+  -o ServerAliveCountMax=10
+)
 DEVICE_SSH_USER="$LIVE_USER"
 DEVICE_SSH_HOST="$LIVE_HOST"
 # shellcheck source=lib/device-ssh.sh
@@ -44,6 +49,8 @@ device_ssh_remote "chmod +x /tmp/sealhub-device-backup/*.sh; \
   bash /tmp/sealhub-device-backup/device-snapshot-on-pi.sh /tmp/sealhub-snap-${SNAP_ID}"
 
 mkdir -p "${BACKUP_ROOT}/${SNAP_ID}"
+# Brief pause after snapshot trap restarts stacks before opening a new SSH/scp session.
+sleep 3
 device_ssh_pull_dir "/tmp/sealhub-snap-${SNAP_ID}" "${BACKUP_ROOT}/${SNAP_ID}"
 device_ssh_remote "rm -rf /tmp/sealhub-snap-${SNAP_ID}"
 
