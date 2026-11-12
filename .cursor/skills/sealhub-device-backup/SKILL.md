@@ -2,7 +2,7 @@
 name: sealhub-device-backup
 description: >-
   Backs up SealHub Pi (podman on live / 100.114.97.68): quiesce containers,
-  snapshot to backups/device-live with 3-retention git, optional GitHub Actions.
+  snapshot to sealhub-data device-live/ with 3-retention git, optional GitHub Actions.
   Use when the user asks to backup SealHub, live Pi, podman snapshot, or device-backup workflow.
 ---
 
@@ -13,7 +13,7 @@ description: >-
 | Item | Value |
 |------|--------|
 | SSH | `pi@100.114.97.68` or `pi@live` (Tailscale) |
-| Repo paths | `hack/pi/device-backup.sh`, `backups/device-live/` |
+| Repo paths | `hack/pi/device-backup.sh` → **`sealhub-data/device-live/`** |
 | Retention | 3 snapshots (`manifest.json`) |
 
 ## Agent workflow
@@ -29,7 +29,7 @@ export SEALHUB_TOKEN=…             # optional hub pocket doc sync
 bash hack/pi/device-backup.sh
 ```
 
-4. Push when user asks: `git push` after commit (local commit is automatic unless `DEVICE_BACKUP_GIT_COMMIT=0`).
+4. Push when user asks: `git push` in **sealhub-data** after commit (local commit is automatic unless `DEVICE_BACKUP_GIT_COMMIT=0`).
 
 ## GitHub Actions
 

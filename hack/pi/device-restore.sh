@@ -11,7 +11,8 @@ else
   LIVE_USER="${DEVICE_USER:-${LIVE_USER:-pi}}"
 fi
 LIVE_PASS="${LIVE_PASS:-}"
-BACKUP_ROOT="${DEVICE_BACKUP_ROOT:-$ROOT/backups/device-live}"
+DEFAULT_DATA="${SEALHUB_DATA_ROOT:-$ROOT/../sealhub-data}"
+BACKUP_ROOT="${DEVICE_BACKUP_ROOT:-$DEFAULT_DATA/device-live}"
 SNAP_ID="${1:-}"
 
 SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)

@@ -1,7 +1,7 @@
 ---
 name: sealhub-device-restore
 description: >-
-  Restores SealHub Pi from latest (or named) git snapshot in backups/device-live
+  Restores SealHub Pi from latest (or named) git snapshot in sealhub-data device-live/
   over SSH. Use when the user asks to restore SealHub, live Pi, device restore,
   or rollback podman/sealhub-data on the Pi.
 ---
@@ -13,12 +13,12 @@ description: >-
 | Item | Value |
 |------|--------|
 | SSH | `pi@100.114.97.68` / `pi@live` |
-| Latest snapshot | `backups/device-live/manifest.json` → `snapshots[0].id` |
+| Latest snapshot | `sealhub-data/device-live/manifest.json` → `snapshots[0].id` |
 | Script | `hack/pi/device-restore.sh` |
 
 ## Agent workflow
 
-1. **Git pull** on sealhub repo so `backups/device-live/` is current (`up` workflows assume this too).
+1. **Git pull** on **sealhub-data** so `device-live/` is current.
 2. Confirm target snapshot (latest or user-provided `YYYY-MM-DDTHHMMSSZ`).
 3. Run from repo root:
 

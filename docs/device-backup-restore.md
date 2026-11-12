@@ -1,6 +1,6 @@
 # Device backup and restore (Pi `live`)
 
-Full **podman quiesced** snapshots of SealHub hubd data (`/var/lib/sealhub/repo`) and Pocket ID (`~/pocket-id`), stored in **this repo** under `backups/device-live/` with **3** retained snapshots (`YYYY-MM-DDTHHMMSSZ` UTC).
+Full **podman quiesced** snapshots of SealHub hubd data (`/var/lib/sealhub/repo`) and Pocket ID (`~/pocket-id`), stored in **[sealhub-data](https://github.com/Raghavendiran-2002/sealhub-data)** under **`device-live/`** with **3** retained snapshots (`YYYY-MM-DDTHHMMSSZ` UTC).
 
 ## Flow
 
@@ -17,6 +17,8 @@ Default: **`pi@100.114.97.68`** (Tailscale). Override:
 export DEVICE_SSH=pi@live
 export SEALHUB_TOKEN=…          # Pi bootstrap/service token
 export LIVE_PASS=…              # optional; prefer Tailscale SSH keys
+# Default: ../sealhub-data/device-live (override with DEVICE_BACKUP_ROOT)
+export DEVICE_BACKUP_GIT_COMMIT=1   # commit in sealhub-data clone after backup
 bash hack/pi/device-backup.sh
 bash hack/pi/device-restore.sh
 bash hack/pi/device-restore.sh 2026-11-12T063045Z

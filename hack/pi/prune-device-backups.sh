@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Keep at most RETENTION timestamped dirs under backups/device-live/.
+# Keep at most RETENTION timestamped dirs under sealhub-data device-live/.
 set -euo pipefail
 
-BACKUP_ROOT="${1:-backups/device-live}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SEALHUB_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+DEFAULT_DATA="${SEALHUB_DATA_ROOT:-$SEALHUB_ROOT/../sealhub-data}"
+BACKUP_ROOT="${1:-$DEFAULT_DATA/device-live}"
 RETENTION="${DEVICE_BACKUP_RETENTION:-3}"
 
 [[ -d "$BACKUP_ROOT" ]] || exit 0

@@ -28,6 +28,7 @@ Allow runner nodes with `tag:ci` to SSH as `pi` to `tag:homelab` (same as homela
 | `TS_AUDIENCE` | Trust credential **Audience** (`api.tailscale.com/…`) |
 | `SEALHUB_PI_BACKUP_TOKEN` | Pi `hub` token (e.g. bootstrap token in `/etc/sealhub/config.yaml`) — for optional `hub pocket` during snapshot |
 | `PI_SUDO_PASS` | Optional; only if restore needs `sudo` without NOPASSWD |
+| `SEALHUB_DATA_PUSH_TOKEN` | GitHub PAT (or fine-grained token) with **write** on `Raghavendiran-2002/sealhub-data` — used to clone/push `device-live/` |
 
 Do **not** put Audience into Client ID or use homelab’s `environment:homelab` credential unless Subject covers this repo.
 
@@ -44,8 +45,8 @@ Create **separate** trust credentials unless one Subject intentionally spans bot
 
 | Workflow | Action |
 |----------|--------|
-| [device-backup.yml](../../.github/workflows/device-backup.yml) | SSH → snapshot → commit `backups/device-live/` → push |
-| [device-restore.yml](../../.github/workflows/device-restore.yml) | SSH → upload latest (or input) snapshot → restore |
+| [device-backup.yml](../../.github/workflows/device-backup.yml) | SSH → snapshot → commit **sealhub-data** `device-live/` → push |
+| [device-restore.yml](../../.github/workflows/device-restore.yml) | Read **sealhub-data** → SSH → upload latest (or input) snapshot → restore |
 
 Composite action: [.github/actions/connect-tailscale-pi](../../.github/actions/connect-tailscale-pi/action.yml).
 

@@ -11,7 +11,10 @@ else
   LIVE_USER="${DEVICE_USER:-${LIVE_USER:-pi}}"
 fi
 LIVE_PASS="${LIVE_PASS:-}"
-BACKUP_ROOT="${DEVICE_BACKUP_ROOT:-$ROOT/backups/device-live}"
+DEFAULT_DATA="${SEALHUB_DATA_ROOT:-$ROOT/../sealhub-data}"
+BACKUP_ROOT="${DEVICE_BACKUP_ROOT:-$DEFAULT_DATA/device-live}"
+DATA_REPO="$(cd "$(dirname "$BACKUP_ROOT")" && pwd)"
+BACKUP_DIR="$(basename "$BACKUP_ROOT")"
 STAMP="$(date -u +%Y-%m-%dT%H%M%SZ)"
 SNAP_ID="$STAMP"
 GIT_COMMIT="${DEVICE_BACKUP_GIT_COMMIT:-1}"
@@ -71,11 +74,11 @@ remote "rm -rf /tmp/sealhub-snap-${SNAP_ID}"
 
 bash "$ROOT/hack/pi/prune-device-backups.sh" "$BACKUP_ROOT"
 
-if [[ "$GIT_COMMIT" == "1" ]] && git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  git -C "$ROOT" add "backups/device-live/"
-  if ! git -C "$ROOT" diff --staged --quiet; then
-    git -C "$ROOT" commit -m "chore(backup): device-live ${SNAP_ID}"
-    log "committed locally (push separately or via GitHub Actions)"
+if [[ "$GIT_COMMIT" == "1" ]] && git -C "$DATA_REPO" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  git -C "$DATA_REPO" add "$BACKUP_DIR/"
+  if ! git -C "$DATA_REPO" diff --staged --quiet; then
+    git -C "$DATA_REPO" commit -m "chore(backup): device-live ${SNAP_ID}"
+    log "committed in sealhub-data (push separately or via GitHub Actions)"
   fi
 fi
 
