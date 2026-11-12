@@ -1,0 +1,59 @@
+name: Device Backup (Pi live)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: sealhub-device-backup
+  cancel-in-progress: false
+
+env:
+  DEVICE_HOST: live
+  PI_TAILSCALE_IP: 100.114.97.68
+
+jobs:
+  backup:
+    name: Backup Pi → git (retain 3)
+    runs-on: ubuntu-latest
+    environment: tailscale
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Connect to Pi
+        id: ts
+        uses: ./.github/actions/connect-tailscale-pi
+        with:
+          ts_oauth_client_id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          ts_audience: ${{ secrets.TS_AUDIENCE }}
+          pi_tailscale_ip: ${{ env.PI_TAILSCALE_IP }}
+
+      - name: Run device backup over SSH
+        env:
+          SEALHUB_TOKEN: ${{ secrets.SEALHUB_PI_BACKUP_TOKEN }}
+          SUDO_PASS: ${{ secrets.PI_SUDO_PASS }}
+        run: |
+          set -euo pipefail
+          chmod +x hack/pi/device-backup.sh hack/pi/prune-device-backups.sh
+          export DEVICE_SSH="${{ steps.ts.outputs.ssh_target }}"
+          export LIVE_PASS="$SUDO_PASS"
+          export DEVICE_BACKUP_GIT_COMMIT=0
+          bash hack/pi/device-backup.sh
+
+      - name: Commit and push (max 3 snapshots)
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backups/device-live/
+          if git diff --staged --quiet; then
+            echo "No backup changes"
+            exit 0
+          fi
+          SNAP="$(python3 -c "import json; print(json.load(open('backups/device-live/manifest.json'))['snapshots'][0]['id'])")"
+          git commit -m "chore(backup): device-live ${SNAP}"
+          git push

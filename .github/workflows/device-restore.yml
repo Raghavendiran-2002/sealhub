@@ -1,0 +1,49 @@
+name: Device Restore (Pi live)
+
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot_id:
+        description: Timestamp folder under backups/device-live (empty = latest per manifest)
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: sealhub-device-restore
+  cancel-in-progress: false
+
+env:
+  PI_TAILSCALE_IP: 100.114.97.68
+
+jobs:
+  restore:
+    name: Restore Pi from git snapshot
+    runs-on: ubuntu-latest
+    environment: tailscale
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Connect to Pi
+        id: ts
+        uses: ./.github/actions/connect-tailscale-pi
+        with:
+          ts_oauth_client_id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          ts_audience: ${{ secrets.TS_AUDIENCE }}
+          pi_tailscale_ip: ${{ env.PI_TAILSCALE_IP }}
+
+      - name: Restore on Pi
+        env:
+          SEALHUB_TOKEN: ${{ secrets.SEALHUB_PI_BACKUP_TOKEN }}
+          SUDO_PASS: ${{ secrets.PI_SUDO_PASS }}
+          SNAP: ${{ github.event.inputs.snapshot_id }}
+        run: |
+          set -euo pipefail
+          chmod +x hack/pi/device-restore.sh hack/pi/device-restore-on-pi.sh
+          export DEVICE_SSH="${{ steps.ts.outputs.ssh_target }}"
+          export LIVE_PASS="$SUDO_PASS"
+          bash hack/pi/device-restore.sh "${SNAP}"

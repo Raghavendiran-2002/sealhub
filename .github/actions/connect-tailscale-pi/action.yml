@@ -1,0 +1,72 @@
+name: Connect Tailscale SSH to Pi (live)
+description: WIF Tailscale join (tag:ci) and resolve pi@live or pi@Tailscale IP for SSH.
+
+inputs:
+  ts_oauth_client_id:
+    description: Tailscale Trust credential Client ID (TS_OAUTH_CLIENT_ID)
+    required: true
+  ts_audience:
+    description: Trust credential Audience (api.tailscale.com/…)
+    required: true
+  ssh_user:
+    description: SSH user on Pi
+    required: false
+    default: pi
+  pi_ssh_host:
+    description: Primary SSH target (Tailscale hostname)
+    required: false
+    default: live
+  pi_tailscale_ip:
+    description: Fallback Tailscale IP (e.g. 100.114.97.68)
+    required: false
+    default: 100.114.97.68
+
+outputs:
+  ssh_target:
+    description: Working SSH destination (user@host)
+    value: ${{ steps.pi.outputs.target }}
+
+runs:
+  using: composite
+  steps:
+    - name: Validate Tailscale WIF secrets
+      shell: bash
+      env:
+        TS_ID: ${{ inputs.ts_oauth_client_id }}
+        TS_AUD: ${{ inputs.ts_audience }}
+      run: |
+        set -euo pipefail
+        if [[ -z "$TS_ID" || -z "$TS_AUD" ]]; then
+          echo "::error::Missing TS_OAUTH_CLIENT_ID or TS_AUDIENCE on GitHub environment."
+          exit 1
+        fi
+        if [[ "$TS_AUD" != api.tailscale.com/* ]]; then
+          echo "::error::TS_AUDIENCE must be api.tailscale.com/…"
+          exit 1
+        fi
+
+    - name: Connect Tailscale
+      uses: tailscale/github-action@v4
+      with:
+        oauth-client-id: ${{ inputs.ts_oauth_client_id }}
+        audience: ${{ inputs.ts_audience }}
+        tags: tag:ci
+
+    - name: Resolve Pi SSH target
+      id: pi
+      shell: bash
+      run: |
+        set -euo pipefail
+        user="${{ inputs.ssh_user }}"
+        for _ in $(seq 1 15); do
+          for host in "${{ inputs.pi_ssh_host }}" "${{ inputs.pi_tailscale_ip }}"; do
+            target="${user}@${host}"
+            if ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new "$target" true 2>/dev/null; then
+              echo "target=$target" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          sleep 4
+        done
+        echo "::error::Tailscale SSH failed — check ACL ssh tag:ci→tag:homelab and tailscale set --ssh on the Pi"
+        exit 1
