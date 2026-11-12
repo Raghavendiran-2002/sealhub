@@ -19,58 +19,33 @@ STAMP="$(date -u +%Y-%m-%dT%H%M%SZ)"
 SNAP_ID="$STAMP"
 GIT_COMMIT="${DEVICE_BACKUP_GIT_COMMIT:-1}"
 
-SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)
-
-remote() {
-  if ssh "${SSH_OPTS[@]}" -o BatchMode=yes "${LIVE_USER}@${LIVE_HOST}" "$@" 2>/dev/null; then
-    return 0
-  fi
-  [[ -n "$LIVE_PASS" ]] || die_ssh
-  command -v sshpass >/dev/null || { echo "sshpass required" >&2; exit 1; }
-  sshpass -p "$LIVE_PASS" ssh "${SSH_OPTS[@]}" "${LIVE_USER}@${LIVE_HOST}" "$@"
-}
-
-remote_scp() {
-  local src="$1" dest="$2"
-  if scp "${SSH_OPTS[@]}" -o BatchMode=yes -r "$src" "$dest" 2>/dev/null; then
-    return 0
-  fi
-  sshpass -p "$LIVE_PASS" scp "${SSH_OPTS[@]}" -r "$src" "$dest"
-}
-
-die_ssh() {
-  echo "SSH to ${LIVE_USER}@${LIVE_HOST} failed (BatchMode). Use Tailscale, SSH keys, or LIVE_PASS." >&2
-  exit 1
-}
+DEVICE_SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=60)
+DEVICE_SSH_USER="$LIVE_USER"
+DEVICE_SSH_HOST="$LIVE_HOST"
+# shellcheck source=lib/device-ssh.sh
+source "$ROOT/hack/pi/lib/device-ssh.sh"
 
 log() { printf '==> %s\n' "$*"; }
 
 log "device backup → ${BACKUP_ROOT}/${SNAP_ID} via ${LIVE_USER}@${LIVE_HOST}"
 
-remote "mkdir -p /tmp/sealhub-device-backup/lib"
-for f in device-snapshot-on-pi.sh; do
-  scp "${SSH_OPTS[@]}" -o BatchMode=yes "${ROOT}/hack/pi/$f" \
-    "${LIVE_USER}@${LIVE_HOST}:/tmp/sealhub-device-backup/" 2>/dev/null \
-    || sshpass -p "$LIVE_PASS" scp "${SSH_OPTS[@]}" "${ROOT}/hack/pi/$f" \
-      "${LIVE_USER}@${LIVE_HOST}:/tmp/sealhub-device-backup/"
-done
-scp "${SSH_OPTS[@]}" -o BatchMode=yes "${ROOT}/hack/pi/lib/podman-stacks.sh" \
-  "${LIVE_USER}@${LIVE_HOST}:/tmp/sealhub-device-backup/lib/" 2>/dev/null \
-  || sshpass -p "$LIVE_PASS" scp "${SSH_OPTS[@]}" "${ROOT}/hack/pi/lib/podman-stacks.sh" \
-    "${LIVE_USER}@${LIVE_HOST}:/tmp/sealhub-device-backup/lib/"
+device_ssh_remote "mkdir -p /tmp/sealhub-device-backup/lib"
+device_ssh_push_file "${ROOT}/hack/pi/device-snapshot-on-pi.sh" /tmp/sealhub-device-backup/device-snapshot-on-pi.sh
+device_ssh_push_file "${ROOT}/hack/pi/lib/podman-stacks.sh" /tmp/sealhub-device-backup/lib/podman-stacks.sh
+device_ssh_remote "chmod +x /tmp/sealhub-device-backup/device-snapshot-on-pi.sh"
 
 TOKEN="${SEALHUB_TOKEN:-${SEALHUB_BOOTSTRAP_TOKEN:-}}"
 SUDO_ENV=""
 [[ -n "$LIVE_PASS" ]] && SUDO_ENV="SUDO_PASS='${LIVE_PASS}'"
 
-remote "rm -rf /tmp/sealhub-snap-${SNAP_ID} && mkdir -p /tmp/sealhub-snap-${SNAP_ID}"
-remote "chmod +x /tmp/sealhub-device-backup/*.sh; \
+device_ssh_remote "rm -rf /tmp/sealhub-snap-${SNAP_ID} && mkdir -p /tmp/sealhub-snap-${SNAP_ID}"
+device_ssh_remote "chmod +x /tmp/sealhub-device-backup/*.sh; \
   SEALHUB_TOKEN='${TOKEN}' SEALHUB_SERVER=http://127.0.0.1:8080 ${SUDO_ENV} \
   bash /tmp/sealhub-device-backup/device-snapshot-on-pi.sh /tmp/sealhub-snap-${SNAP_ID}"
 
 mkdir -p "${BACKUP_ROOT}/${SNAP_ID}"
-remote_scp "${LIVE_USER}@${LIVE_HOST}:/tmp/sealhub-snap-${SNAP_ID}/*" "${BACKUP_ROOT}/${SNAP_ID}/"
-remote "rm -rf /tmp/sealhub-snap-${SNAP_ID}"
+device_ssh_pull_dir "/tmp/sealhub-snap-${SNAP_ID}" "${BACKUP_ROOT}/${SNAP_ID}"
+device_ssh_remote "rm -rf /tmp/sealhub-snap-${SNAP_ID}"
 
 bash "$ROOT/hack/pi/prune-device-backups.sh" "$BACKUP_ROOT"
 

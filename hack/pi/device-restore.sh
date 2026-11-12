@@ -15,20 +15,11 @@ DEFAULT_DATA="${SEALHUB_DATA_ROOT:-$ROOT/../sealhub-data}"
 BACKUP_ROOT="${DEVICE_BACKUP_ROOT:-$DEFAULT_DATA/device-live}"
 SNAP_ID="${1:-}"
 
-SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)
-
-remote() {
-  if ssh "${SSH_OPTS[@]}" -o BatchMode=yes "${LIVE_USER}@${LIVE_HOST}" "$@" 2>/dev/null; then
-    return 0
-  fi
-  [[ -n "$LIVE_PASS" ]] || { echo "SSH failed" >&2; exit 1; }
-  sshpass -p "$LIVE_PASS" ssh "${SSH_OPTS[@]}" "${LIVE_USER}@${LIVE_HOST}" "$@"
-}
-
-remote_scp() {
-  if scp "${SSH_OPTS[@]}" -o BatchMode=yes -r "$1" "$2" 2>/dev/null; then return 0; fi
-  sshpass -p "$LIVE_PASS" scp "${SSH_OPTS[@]}" -r "$1" "$2"
-}
+DEVICE_SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=60)
+DEVICE_SSH_USER="$LIVE_USER"
+DEVICE_SSH_HOST="$LIVE_HOST"
+# shellcheck source=lib/device-ssh.sh
+source "$ROOT/hack/pi/lib/device-ssh.sh"
 
 if [[ -z "$SNAP_ID" ]]; then
   if [[ -f "${BACKUP_ROOT}/manifest.json" ]]; then
@@ -46,21 +37,16 @@ fi
 log() { printf '==> %s\n' "$*"; }
 log "restore ${SNAP_ID} → ${LIVE_USER}@${LIVE_HOST}"
 
-remote "mkdir -p /tmp/sealhub-device-restore/lib"
-scp "${SSH_OPTS[@]}" -o BatchMode=yes "${ROOT}/hack/pi/device-restore-on-pi.sh" \
-  "${LIVE_USER}@${LIVE_HOST}:/tmp/sealhub-device-restore/" 2>/dev/null \
-  || sshpass -p "$LIVE_PASS" scp "${SSH_OPTS[@]}" "${ROOT}/hack/pi/device-restore-on-pi.sh" \
-    "${LIVE_USER}@${LIVE_HOST}:/tmp/sealhub-device-restore/"
-scp "${SSH_OPTS[@]}" -o BatchMode=yes "${ROOT}/hack/pi/lib/podman-stacks.sh" \
-  "${LIVE_USER}@${LIVE_HOST}:/tmp/sealhub-device-restore/lib/" 2>/dev/null \
-  || sshpass -p "$LIVE_PASS" scp "${SSH_OPTS[@]}" "${ROOT}/hack/pi/lib/podman-stacks.sh" \
-    "${LIVE_USER}@${LIVE_HOST}:/tmp/sealhub-device-restore/lib/"
+device_ssh_remote "mkdir -p /tmp/sealhub-device-restore/lib"
+device_ssh_push_file "${ROOT}/hack/pi/device-restore-on-pi.sh" /tmp/sealhub-device-restore/device-restore-on-pi.sh
+device_ssh_push_file "${ROOT}/hack/pi/lib/podman-stacks.sh" /tmp/sealhub-device-restore/lib/podman-stacks.sh
+device_ssh_remote "chmod +x /tmp/sealhub-device-restore/device-restore-on-pi.sh"
 
-remote "rm -rf /tmp/sealhub-restore-${SNAP_ID} && mkdir -p /tmp/sealhub-restore-${SNAP_ID}"
-remote_scp "${BACKUP_ROOT}/${SNAP_ID}/" "${LIVE_USER}@${LIVE_HOST}:/tmp/sealhub-restore-${SNAP_ID}/"
+device_ssh_remote "rm -rf /tmp/sealhub-restore-${SNAP_ID} && mkdir -p /tmp/sealhub-restore-${SNAP_ID}"
+device_ssh_push_dir "${BACKUP_ROOT}/${SNAP_ID}" "/tmp/sealhub-restore-${SNAP_ID}"
 
 TOKEN="${SEALHUB_TOKEN:-}"
-remote "chmod +x /tmp/sealhub-device-restore/*.sh; \
+device_ssh_remote "chmod +x /tmp/sealhub-device-restore/*.sh; \
   SEALHUB_TOKEN='${TOKEN}' bash /tmp/sealhub-device-restore/device-restore-on-pi.sh /tmp/sealhub-restore-${SNAP_ID}"
 
 log "restore finished"
