@@ -22,9 +22,13 @@ DEVICE_SSH_OPTS=(
   -o ServerAliveCountMax=10
 )
 DEVICE_SSH_USER="$LIVE_USER"
+DEVICE_SSH_PRIMARY_HOST="$LIVE_HOST"
 DEVICE_SSH_HOST="$LIVE_HOST"
+DEVICE_SSH_FALLBACK_HOST="${DEVICE_SSH_FALLBACK:-${PI_TAILSCALE_IP:-100.114.97.68}}"
 # shellcheck source=lib/device-ssh.sh
 source "$ROOT/hack/pi/lib/device-ssh.sh"
+device_ssh_master_opts
+trap device_ssh_close_master EXIT
 
 if [[ -z "$SNAP_ID" ]]; then
   if [[ -f "${BACKUP_ROOT}/manifest.json" ]]; then

@@ -54,6 +54,8 @@ jobs:
           set -euo pipefail
           chmod +x hack/pi/device-backup.sh hack/pi/prune-device-backups.sh
           export DEVICE_SSH="${{ steps.ts.outputs.ssh_target }}"
+          export DEVICE_SSH_FALLBACK="${{ env.PI_TAILSCALE_IP }}"
+          export PI_TAILSCALE_IP="${{ env.PI_TAILSCALE_IP }}"
           export LIVE_PASS="$SUDO_PASS"
           bash hack/pi/device-backup.sh
 
