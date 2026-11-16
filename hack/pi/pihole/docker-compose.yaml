@@ -1,0 +1,15 @@
+# Pi-hole on Kiri (live). Data under ~/pihole/{etc-pihole,etc-dnsmasq.d}.
+services:
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      TZ: Asia/Kolkata
+      FTLCONF_dns_listeningMode: ALL
+      FTLCONF_webserver_api_password: "${PIHOLE_WEB_PASSWORD:-}"
+      FTLCONF_webserver_port: "8082"
+    volumes:
+      - ./etc-pihole:/etc/pihole
+      - ./etc-dnsmasq.d:/etc/dnsmasq.d

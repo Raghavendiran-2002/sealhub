@@ -36,8 +36,9 @@ Browser ──► Live Pi :5000 (RootOS dashboard)
 
 ### Live Pi (`100.114.97.68`)
 
-- **Podman** and **podman compose** (existing Pocket ID stack under `~/pocket-id`).
+- **[Kiri](https://docs.runkiri.com/linux)** on Linux (`kiri.service`, `docker` / `docker compose`) — Pocket ID stack under `~/pocket-id`.
 - **`~/pocket-id/starry/auth.yml`** with Pocket ID OIDC already configured (from prior Starry Cloud / RootOS setup).
+- **Cloudflare Tunnel** token in `~/pocket-id/.env` as `TUNNEL_TOKEN` (remote ingress in Zero Trust; see [§7 Cloudflare Tunnel](#7-cloudflare-tunnel-zero-trust)).
 
 ### Control Pi (`100.97.65.127`)
 
@@ -85,10 +86,11 @@ ghcr.io/raghavendiran-2002/rootos:<git-sha>
 ### Pull on a Pi
 
 ```bash
-podman pull ghcr.io/raghavendiran-2002/rootos:latest
+docker pull ghcr.io/raghavendiran-2002/rootos:latest
+# or: sg kiri -c "docker pull ghcr.io/raghavendiran-2002/rootos:latest"
 ```
 
-Public GHCR pull works without login; private packages need `podman login ghcr.io`.
+Public GHCR pull works without login; private packages need `docker login ghcr.io`.
 
 ---
 
@@ -163,7 +165,7 @@ services:
 
 ### Live Pi — `~/pocket-id/.env`
 
-Persist the metrics token so `podman compose` keeps it across recreates:
+Persist the metrics token so `docker compose` keeps it across recreates:
 
 ```bash
 METRICS_TOKEN=<same-64-hex-as-agent>
@@ -180,8 +182,7 @@ Important **`rootos`** service bits:
   rootos:
     image: ${ROOTOS_IMAGE:-ghcr.io/raghavendiran-2002/rootos:latest}
     container_name: rootos
-    ports:
-      - "5000:5000"
+    network_mode: host   # required for Tailscale control-plane metrics egress
     environment:
       METRICS_REMOTE_TOKEN: ${METRICS_TOKEN:-}
     volumes:
@@ -189,6 +190,8 @@ Important **`rootos`** service bits:
       - ./starry/auth.yml:/app/auth.yml:ro
       # host /proc, /sys, /etc/hostname mounts for Live metrics ...
 ```
+
+**`network_mode: host`** binds port **5000** on the Pi directly (no `ports:` mapping). Remote metrics then work over Tailscale; cloudflared must reach the dashboard via the bridge gateway — see [§7](#7-cloudflare-tunnel-zero-trust).
 
 Stop the old **`starry-cloud`** container when switching to **`rootos`** (same port 5000).
 
@@ -254,7 +257,41 @@ Use a private window or clear site cookies after changes.
 
 ---
 
-## 7. Deploy from your Mac (recommended)
+## 7. Cloudflare Tunnel (Zero Trust)
+
+The live stack runs **`pocket-id-cloudflared`** with **`tunnel --no-autoupdate run`** and **`TUNNEL_TOKEN`** from `~/pocket-id/.env`. Public hostnames and upstream URLs are configured in **[Cloudflare One](https://one.dash.cloudflare.com/) → Networks → Tunnels →** your tunnel → **Published application routes** (not in this git repo).
+
+**Order matters** — first match wins.
+
+| Public hostname | Service (HTTP) | Notes |
+|-----------------|------------------|--------|
+| `id.raghavendiran.cloud` | **`http://pocket-id:1411`** | Pocket ID stays on the compose bridge; name **`pocket-id`** resolves for cloudflared. |
+| `home.raghavendiran.cloud` | **`http://172.18.0.1:5000`** | RootOS uses **`network_mode: host`** — it is **not** on Docker DNS as **`rootos`**. Use the compose **gateway IP** to reach host port **5000** from the bridge network. |
+
+**Do not** use **`http://rootos:5000`** for home after host networking — cloudflared logs `lookup rootos on 127.0.0.11:53: no such host` and the site returns **502**.
+
+If the gateway is not `172.18.0.1` (network recreation, Kiri upgrade), on **live**:
+
+```bash
+docker inspect pocket-id-cloudflared --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}'
+```
+
+Update the **home** route to `http://<that-ip>:5000`.
+
+**Alternative:** set home to **`http://127.0.0.1:5000`** only if **cloudflared** also uses **`network_mode: host`** (same as RootOS).
+
+**Unchanged when migrating Podman → Kiri:** `TUNNEL_TOKEN`, DNS CNAMEs, Pocket ID redirect `https://id.raghavendiran.cloud/...`, RootOS redirect `https://home.raghavendiran.cloud/login/oidc/callback`, **`trusted_proxy_hops: 1`** in `auth.yml` for HTTPS via tunnel.
+
+Quick check from your laptop:
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' https://home.raghavendiran.cloud/
+curl -sS -o /dev/null -w '%{http_code}\n' https://id.raghavendiran.cloud/
+```
+
+---
+
+## 8. Deploy from your Mac (recommended)
 
 From sealhub repo root on branch **`rootos`**:
 
@@ -281,7 +318,7 @@ Scripts:
 
 ---
 
-## 8. Manual verification
+## 9. Manual verification
 
 ### Control Pi — agent
 
@@ -322,21 +359,23 @@ curl -sf -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---------|----------------|-----|
+| **`home.raghavendiran.cloud` → 502** | Tunnel still points at **`http://rootos:5000`** | Set home service to **`http://172.18.0.1:5000`** ([§7](#7-cloudflare-tunnel-zero-trust)) |
 | Control plane: **HTTP 401** | Empty **`METRICS_REMOTE_TOKEN`** in `rootos` container | Set **`METRICS_TOKEN`** in `~/pocket-id/.env`, recreate container |
+| Control plane: **request failed** (not 401) | Bridge container cannot reach Tailscale | Keep **`network_mode: host`** on **`rootos`** |
 | OIDC loop back to login | **`secure_cookie: true`** on HTTP | Set **`secure_cookie: false`**, recreate `rootos` |
 | OIDC “invalid redirect” at IdP | Wrong callback URL | Use **`/login/oidc/callback`**, not `/login` |
-| Agent: connection refused on :9090 | Systemd using foreground `podman run --rm` or port conflict | Use **`-d`** unit from repo; `sudo systemctl restart rootos-metrics-agent` |
-| `podman: command not found` on control Pi | Podman not installed | `apt install podman` |
+| Agent: connection refused on :9090 | Systemd unit or port conflict | `sudo systemctl restart rootos-metrics-agent`; see [`rootos-metrics-agent.service`](rootos-metrics-agent/rootos-metrics-agent.service) |
+| `podman: command not found` on control Pi | Podman not installed | `apt install podman` (agent still uses Podman there) |
 | Live metrics OK, remote `--` | Tailscale/firewall or wrong URL in `metrics_hosts` | Check `url: http://100.97.65.127:9090` from live Pi with curl + token |
-| Port 5000 bind error | **`starry-cloud`** still running | `podman stop starry-cloud; podman rm starry-cloud`, then recreate **`rootos`** |
+| Port 5000 bind error | **`starry-cloud`** still running | Remove old container, then `docker compose up -d --force-recreate rootos` |
 
 ---
 
-## 10. File reference (repo)
+## 11. File reference (repo)
 
 | Path | Description |
 |------|-------------|
@@ -350,7 +389,7 @@ curl -sf -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-## 11. SealHub backups (live + K8s)
+## 12. SealHub backups (live + K8s)
 
 | Script | Where | Purpose |
 |--------|--------|---------|
@@ -362,6 +401,6 @@ Defaults: [`homelab-env.sh`](homelab-env.sh) (`LIVE_HOST`, `CONTROL_HOST`, hub U
 
 ---
 
-## 12. Related SealHub (`main` branch)
+## 13. Related SealHub (`main` branch)
 
 The **`main`** branch is **SealHub** (`hubd`, config in GitHub). It previously documented Starry Cloud under `~/pocket-id` and backup paths like `live/starry-cloud/` in **sealhub-data**. RootOS on **`rootos`** replaces the dashboard image and naming; you can back up live files with `hub apply live/rootos/...` if you use SealHub on the live Pi.

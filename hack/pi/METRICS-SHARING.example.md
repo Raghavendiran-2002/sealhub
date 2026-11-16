@@ -83,6 +83,15 @@ If you use the public hostname instead:
 https://home.raghavendiran.cloud/login/oidc/callback
 ```
 
+### Cloudflare tunnel (live)
+
+| Hostname | Service URL in Zero Trust |
+|----------|---------------------------|
+| `id.raghavendiran.cloud` | `http://pocket-id:1411` |
+| `home.raghavendiran.cloud` | `http://172.18.0.1:5000` (not `http://rootos:5000` when RootOS uses `network_mode: host`) |
+
+Full detail: [ROOTOS-DEPLOY.md §7](ROOTOS-DEPLOY.md#7-cloudflare-tunnel-zero-trust).
+
 In `auth.yml` on the dashboard Pi:
 
 - **`secure_cookie: false`** when you open the dashboard over plain `http://…` (Tailscale IP). With `secure_cookie: true`, the browser drops the session cookie and you loop back to login after OIDC.
