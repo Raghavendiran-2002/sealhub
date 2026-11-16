@@ -20,14 +20,16 @@ pub async fn run(listen: SocketAddr) -> Result<(), String> {
         .filter(|value| !value.is_empty());
     let monitor = Arc::new(SystemMonitor::default());
 
-    let app = Router::new()
-        .route("/health", get(health))
+    let protected = Router::new()
         .route("/api/system-stats", get(system_stats))
-        .with_state(monitor)
         .layer(middleware::from_fn_with_state(
             metrics_token,
             require_metrics_token,
-        ));
+        ))
+        .with_state(monitor);
+    let app = Router::new()
+        .route("/health", get(health))
+        .merge(protected);
 
     let listener = tokio::net::TcpListener::bind(listen)
         .await

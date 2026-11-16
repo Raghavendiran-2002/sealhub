@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy RootOS dashboard on live Pi using GHCR image (Podman compose).
+# Deploy RootOS dashboard on live Pi using GHCR image (Kiri / docker compose).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -13,7 +13,7 @@ SSH=(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=
 SCP=(scp -o BatchMode=yes -o StrictHostKeyChecking=accept-new)
 
 echo "==> Deploy RootOS dashboard to ${LIVE_USER}@${LIVE_HOST}" >&2
-"${SSH[@]}" "podman pull ${ROOTOS_IMAGE}"
+"${SSH[@]}" "docker pull ${ROOTOS_IMAGE} 2>/dev/null || sg kiri -c \"docker pull ${ROOTOS_IMAGE}\""
 
 if "${SSH[@]}" "test -d ${POCKET_DIR}"; then
   echo "==> Pocket ID stack at ${POCKET_DIR}" >&2
@@ -37,8 +37,7 @@ if "${SSH[@]}" "test -d ${POCKET_DIR}"; then
       echo 'METRICS_TOKEN=${METRICS_TOKEN}' >> ${POCKET_DIR}/.env"
   fi
   "${SSH[@]}" "cd ${POCKET_DIR} && export ROOTOS_IMAGE='${ROOTOS_IMAGE}' METRICS_TOKEN='${METRICS_TOKEN:-}' && \
-    podman stop starry-cloud 2>/dev/null || true; podman rm -f starry-cloud 2>/dev/null || true; \
-    podman compose up -d --force-recreate rootos"
+    (docker compose up -d --force-recreate rootos 2>/dev/null || sg kiri -c \"docker compose up -d --force-recreate rootos\")"
 else
   echo "==> Standalone stack at ${STANDALONE_DIR}" >&2
   "${SSH[@]}" "mkdir -p ${STANDALONE_DIR}"
@@ -49,7 +48,7 @@ else
     exit 1
   fi
   "${SSH[@]}" "cd ${STANDALONE_DIR} && export ROOTOS_IMAGE='${ROOTOS_IMAGE}' METRICS_TOKEN='${METRICS_TOKEN:-}' && \
-    podman compose up -d --force-recreate"
+    (docker compose up -d --force-recreate 2>/dev/null || sg kiri -c \"docker compose up -d --force-recreate\")"
 fi
 
 "${SSH[@]}" "curl -sf http://127.0.0.1:5000/health"

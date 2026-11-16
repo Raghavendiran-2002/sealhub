@@ -3,12 +3,10 @@ services:
     image: ${ROOTOS_IMAGE:-ghcr.io/raghavendiran-2002/rootos:latest}
     container_name: rootos
     restart: unless-stopped
+    network_mode: host
     init: true
-    ports:
-      - "5000:5000"
     environment:
       METRICS_REMOTE_TOKEN: ${METRICS_TOKEN:-}
-    pids_limit: 128
     cap_drop:
       - ALL
     security_opt:

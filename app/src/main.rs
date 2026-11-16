@@ -862,7 +862,7 @@ async fn fetch_remote_stats(client: &reqwest::Client, host: &MetricsHost) -> Res
     let url = format!("{}/api/system-stats", base.trim_end_matches('/'));
     let mut request = client
         .get(url)
-        .timeout(Duration::from_secs(2));
+        .timeout(Duration::from_secs(10));
     if let Some(token) = metrics_host_token(host) {
         request = request.bearer_auth(token);
     }
